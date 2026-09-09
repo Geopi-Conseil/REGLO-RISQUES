@@ -46,15 +46,30 @@ zones touchées, à titre de traçabilité.
 Faute de donnée directe et exhaustive sur le nombre de niveaux habitables,
 l'outil combine deux sources, par ordre de priorité :
 
-1. **BD TOPO® - `nombre_d_etages`** : quand disponible, une valeur ≥ 2
-   indique un étage (le rez-de-chaussée est compté comme le premier niveau).
+1. **BD TOPO® - `nombre_d_etages`** (ou `nb_niveau` BDNB pour les bâtiments
+   enrichis, §10) : quand disponible, une valeur ≥ 2 indique un étage (le
+   rez-de-chaussée est compté comme le premier niveau).
 2. **Estimation par la hauteur du bâti** (`hauteur`, BD TOPO) : à défaut de
-   `nombre_d_etages`, un seuil de **5,30 m** est utilisé (calibré
+   niveau déclaré, un seuil de **5,30 m** est utilisé (calibré
    empiriquement sur le bâti de la commune). Au-delà, présence d'un étage
    jugée probable, la fiabilité de cette estimation étant qualifiée de
    « modérée » dans le champ `etage_source`.
+3. **Contrôle de cohérence.** Si la source déclarative (1) indique 0 ou 1
+   niveau mais que la hauteur mesurée dépasse le seuil de 5,30 m du point
+   (2), la déclaration est jugée incompatible avec la géométrie réelle du
+   bâtiment : un étage est retenu par prudence plutôt que de conclure à
+   son absence (le champ `etage_source` explicite alors l'incohérence,
+   ex. `"étage retenu par prudence (1 niveau déclaré, incohérent avec la
+   hauteur mesurée 8.7 m > seuil 5.30 m)"`). Ce contrôle, ajouté après
+   qu'une vérification terrain a révélé de nombreux faux « sans étage »,
+   a corrigé 755 bâtiments sur la commune (dont 107 en zone réglementée,
+   dont 3 faisant basculer une obligation de zone refuge du cas
+   « travaux structurels nécessaires » vers « aménagement possible sur un
+   niveau existant ») : les champs `nombre_d_etages` (BD TOPO) et
+   `nb_niveau` (BDNB Fichiers Fonciers) se sont révélés peu fiables pour
+   une part significative des bâtiments à plusieurs niveaux de la commune.
 
-Si aucune des deux sources n'est disponible, le champ `etage_present` vaut
+Si aucune des sources n'est disponible, le champ `etage_present` vaut
 `"Inconnu"`.
 
 ## 4. Zone refuge
@@ -140,6 +155,14 @@ de confiance).
   `batiment_groupe` regroupant plusieurs bâtiments BD TOPO contigus, la
   typologie/le nombre de logements attribués sont ceux du groupe BDNB dans
   son ensemble, pas nécessairement ceux du bâtiment individuel exact.
+- Le contrôle de cohérence hauteur/niveaux (§3) ne corrige que le cas où
+  la source déclarative *sous-estime* le nombre de niveaux (le plus
+  risqué, car il peut conclure à tort à l'absence d'étage) ; le cas
+  inverse (niveaux déclarés ≥ 2 mais hauteur très faible) n'est pas
+  corrigé et reste possible marginalement. Plus largement, `nombre_d_etages`
+  et `nb_niveau` restent des champs déclaratifs/administratifs, pas une
+  mesure directe : une vérification terrain reste recommandée pour toute
+  décision engageant des travaux structurels (§4).
 
 ## 10. Enrichissement par la BDNB (typologie, étages, logements)
 
