@@ -64,6 +64,25 @@
           <label class="legend-row"><input type="checkbox" id="toggle-erp" checked> Établissements recevant du public</label>
         </div>
       </div>
+
+      <div class="dashboard-wrapper">
+        <button type="button" id="dashboard-toggle" class="icon-btn" aria-expanded="false" aria-controls="dashboard-box" aria-label="Afficher le tableau de bord (élus, techniciens)">📊</button>
+        <div id="dashboard-box" class="dashboard-box" role="region" aria-label="Tableau de bord communal">
+          <h3>Tableau de bord communal</h3>
+          <p class="dashboard-intro">
+            À l'attention des élus et techniciens. Cliquez sur une donnée pour
+            surligner les bâtiments correspondants sur la carte ; cliquez à
+            nouveau pour réinitialiser.
+          </p>
+          <div class="dashboard-active-filter" id="dashboard-active-filter" hidden>
+            <span id="dashboard-active-filter-label"></span>
+            <button type="button" id="dashboard-reset-btn" aria-label="Réinitialiser le filtre">✕</button>
+          </div>
+          <div id="dashboard-groups" class="dashboard-groups">
+            <p class="text-muted">Chargement des données…</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <button id="locate-btn" class="icon-btn locate-btn" aria-label="Me localiser sur la carte">📍</button>

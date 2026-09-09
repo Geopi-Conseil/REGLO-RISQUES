@@ -51,6 +51,13 @@ méthode de calcul et les limites.
   confusion avec une communication officielle de l'État ou de la mairie, le
   site s'identifie clairement comme un outil indépendant, avec un bandeau de
   rappel et un lien systématique vers les mentions légales.
+- **Tableau de bord communal (élus, techniciens).** Section dépliable
+  accessible depuis la carte (icône 📊), complémentaire à la fiche par
+  bâtiment : agrégats communaux (ERP en zone, bâtiments soumis à obligation
+  de zone refuge, fiabilité des données, éligibilité FPRNM, répartition par
+  zone réglementaire...). Chaque donnée est cliquable et surligne sur la
+  carte les bâtiments/ERP correspondants, calculée côté client à partir des
+  mêmes GeoJSON (aucune source ni traitement serveur supplémentaire).
 
 ## Démarrage rapide
 

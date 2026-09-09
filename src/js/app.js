@@ -10,6 +10,7 @@
    4. Sélection d'un bâtiment / rendu du panneau d'information
    5. Recherche d'adresse (API Adresse - BAN) et géolocalisation
    6. Légende et bascule des couches
+   7. Tableau de bord communal (élus, techniciens)
    ========================================================================= */
 
 (() => {
@@ -132,7 +133,12 @@
   }
 
   function onEachBatiment(feature, layer) {
-    defaultStyleCache.set(layer, layer.options);
+    // Copie (et non simple référence) : Leaflet mute layer.options en place
+    // à chaque setStyle(), donc garder une référence ferait pointer le
+    // « style d'origine » vers le dernier style appliqué au lieu du vrai
+    // style de départ, empêchant toute restauration correcte (sélection
+    // d'un bâtiment comme filtres du tableau de bord, §7).
+    defaultStyleCache.set(layer, { ...layer.options });
     layer.on("click", () => selectBuilding(layer, feature));
     layer.on("keypress", (e) => {
       if (e.originalEvent && (e.originalEvent.key === "Enter" || e.originalEvent.key === " ")) {
@@ -187,6 +193,11 @@
       className: "erp-marker",
     });
     marker.bindPopup(renderErpPopup(feature.properties), { maxWidth: 280 });
+    // Nécessaire pour que le tableau de bord (§7) puisse restaurer le style
+    // d'origine d'un marqueur ERP après un filtre (voir onEachBatiment, qui
+    // fait de même pour les bâtiments dès leur création ; copie superficielle
+    // pour la même raison : setStyle() mute marker.options en place).
+    defaultStyleCache.set(marker, { ...marker.options });
     return marker;
   }
 
@@ -668,6 +679,268 @@
     if (erpToggle.checked) map.addLayer(layers.erp);
     else map.removeLayer(layers.erp);
   });
+
+  /* ----------------------------------------------------------------------
+   * 7. Tableau de bord communal (élus, techniciens)
+   *
+   * Agrégats calculés côté client à partir des GeoJSON déjà chargés (aucune
+   * source de données supplémentaire, aucun recalcul serveur). Chaque
+   * donnée est une tuile cliquable : elle surligne sur la carte les
+   * bâtiments/ERP correspondants et estompe les autres, en réutilisant
+   * defaultStyleCache pour revenir au style d'origine à la réinitialisation
+   * (même mécanisme que la sélection d'un bâtiment, cf. §4).
+   * -------------------------------------------------------------------- */
+
+  const DASHBOARD_HIGHLIGHT_FILL = "#d81b60";
+  const DASHBOARD_HIGHLIGHT_STROKE = "#880e4f";
+
+  const DASHBOARD_TILES = [
+    {
+      id: "erp-en-zone",
+      group: "Établissements recevant du public (ERP)",
+      layerKey: "erp",
+      label: "ERP en zone réglementée PPRi",
+      predicate: (p) => p.concerne === true,
+    },
+    {
+      id: "erp-sensibles",
+      group: "Établissements recevant du public (ERP)",
+      layerKey: "erp",
+      label: "… dont établissements sensibles ou stratégiques",
+      sub: true,
+      predicate: (p) => p.concerne === true && /^Établissement/.test(p.classeVulnerabilite || ""),
+    },
+    {
+      id: "refuge-obligatoire",
+      group: "Zone refuge",
+      layerKey: "batiments",
+      label: "Bâtiments avec obligation de zone refuge",
+      predicate: (p) => (p.zoneRefuge || "").startsWith("OBLIGATOIRE"),
+    },
+    {
+      id: "refuge-sans-etage",
+      group: "Zone refuge",
+      layerKey: "batiments",
+      label: "⚠️ … dont sans étage existant (travaux structurels nécessaires)",
+      sub: true,
+      predicate: (p) => (p.zoneRefuge || "").includes("ATTENTION"),
+    },
+    {
+      id: "typologie-bdnb",
+      group: "Typologie et fiabilité des données",
+      layerKey: "batiments",
+      label: "Typologie complétée via la BDNB (à vérifier terrain)",
+      predicate: (p) => !!p.typologieSource,
+    },
+    {
+      id: "typologie-indeterminee",
+      group: "Typologie et fiabilité des données",
+      layerKey: "batiments",
+      label: "Typologie encore indéterminée",
+      predicate: (p) => (p.typologie || "").startsWith("Typologie indéterminée"),
+    },
+    {
+      id: "emprise-non-fiable",
+      group: "Typologie et fiabilité des données",
+      layerKey: "batiments",
+      label: "Emprise trop réduite pour un seuil de travaux fiable",
+      predicate: (p) => (p.empriseFiable || "").startsWith("Non"),
+    },
+    {
+      id: "fprnm-indetermine",
+      group: "Éligibilité Fonds Barnier (FPRNM)",
+      layerKey: "batiments",
+      label: "Éligibilité non déterminée",
+      predicate: (p) => (p.eligibiliteFprnm || "").startsWith("Non déterminé"),
+    },
+  ];
+
+  const ZONE_CSS_VAR = {
+    BLEU_CU: "--zone-bleu-fonce",
+    BLEU_AZU: "--zone-bleu-clair",
+    ORANGE_AZU: "--zone-orange",
+    ROUGE: "--zone-rouge",
+    ROUGE_CU: "--zone-rouge",
+    VIOLET: "--zone-violet",
+  };
+
+  const dashboardToggle = document.getElementById("dashboard-toggle");
+  const dashboardBox = document.getElementById("dashboard-box");
+  const dashboardGroups = document.getElementById("dashboard-groups");
+  const dashboardActiveFilter = document.getElementById("dashboard-active-filter");
+  const dashboardActiveFilterLabel = document.getElementById("dashboard-active-filter-label");
+  const dashboardResetBtn = document.getElementById("dashboard-reset-btn");
+
+  const dashboardTileIndex = new Map();
+  let dashboardActiveTileId = null;
+  let dashboardActiveLayerKey = null;
+
+  function setDashboardOpen(open) {
+    dashboardBox.classList.toggle("open", open);
+    dashboardToggle.setAttribute("aria-expanded", String(open));
+    dashboardToggle.setAttribute("aria-pressed", String(open));
+  }
+
+  dashboardToggle.addEventListener("click", () => {
+    setDashboardOpen(!dashboardBox.classList.contains("open"));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!dashboardBox.classList.contains("open")) return;
+    if (e.target === dashboardToggle || dashboardBox.contains(e.target)) return;
+    setDashboardOpen(false);
+  });
+
+  function eachFeatureLayer(layerGroup, fn) {
+    layerGroup.eachLayer((geoLayer) => {
+      if (geoLayer.eachLayer) geoLayer.eachLayer(fn);
+    });
+  }
+
+  function countMatches(features, predicate) {
+    let n = 0;
+    for (const f of features) if (predicate(f.properties)) n += 1;
+    return n;
+  }
+
+  function tileHtml(id, label, count, sub) {
+    return `
+      <button type="button" class="dashboard-tile${sub ? " sub" : ""}" data-tile-id="${id}" aria-pressed="false">
+        <span class="dashboard-tile-count">${count}</span>
+        <span class="dashboard-tile-label">${escapeHtml(label)}</span>
+      </button>
+    `;
+  }
+
+  function initDashboard() {
+    const data = window.__appData;
+    if (!data) return;
+
+    const groupsHtml = [];
+    const seenGroups = new Set();
+
+    DASHBOARD_TILES.forEach((tile) => {
+      dashboardTileIndex.set(tile.id, tile);
+      if (seenGroups.has(tile.group)) return;
+      seenGroups.add(tile.group);
+      const tilesOfGroup = DASHBOARD_TILES.filter((t) => t.group === tile.group);
+      const rows = tilesOfGroup
+        .map((t) => {
+          const features = t.layerKey === "erp" ? data.erp.features : data.batZone.features;
+          return tileHtml(t.id, t.label, countMatches(features, t.predicate), t.sub);
+        })
+        .join("");
+      groupsHtml.push(`<div class="dashboard-group"><h4>${escapeHtml(tile.group)}</h4>${rows}</div>`);
+    });
+
+    // Répartition par zone réglementaire : générée depuis CONFIG.zoneOrder
+    // plutôt que déclarée dans DASHBOARD_TILES (une tuile par zone).
+    const zoneRows = CONFIG.zoneOrder
+      .map((zoneCode) => {
+        const tileId = `zone-${zoneCode}`;
+        dashboardTileIndex.set(tileId, {
+          id: tileId,
+          layerKey: "batiments",
+          predicate: (p) => p.zoneCode === zoneCode,
+        });
+        const count = countMatches(data.batZone.features, (p) => p.zoneCode === zoneCode);
+        return `
+          <button type="button" class="dashboard-tile dashboard-tile-zone" data-tile-id="${tileId}" aria-pressed="false">
+            <span class="legend-swatch" style="background:var(${ZONE_CSS_VAR[zoneCode]})"></span>
+            <span class="dashboard-tile-label">${escapeHtml(CONFIG.zoneShortNames[zoneCode])}</span>
+            <span class="dashboard-tile-count">${count}</span>
+          </button>
+        `;
+      })
+      .join("");
+    groupsHtml.push(`<div class="dashboard-group"><h4>Bâtiments par zone réglementaire</h4>${zoneRows}</div>`);
+
+    dashboardGroups.innerHTML = groupsHtml.join("");
+    dashboardGroups.querySelectorAll(".dashboard-tile").forEach((btn) => {
+      btn.addEventListener("click", () => toggleDashboardFilter(btn.dataset.tileId));
+    });
+  }
+
+  function toggleDashboardFilter(tileId) {
+    if (dashboardActiveTileId === tileId) {
+      clearDashboardFilter();
+      return;
+    }
+    const tile = dashboardTileIndex.get(tileId);
+    if (!tile) return;
+    applyDashboardFilter(tile);
+  }
+
+  function restoreLayerStyles(layerKey) {
+    eachFeatureLayer(layers[layerKey], (leaf) => {
+      const original = defaultStyleCache.get(leaf);
+      if (original) leaf.setStyle(original);
+      if (leaf.setRadius) leaf.setRadius(7);
+    });
+  }
+
+  function applyDashboardFilter(tile) {
+    clearSelection();
+    if (dashboardActiveLayerKey && dashboardActiveLayerKey !== tile.layerKey) {
+      restoreLayerStyles(dashboardActiveLayerKey);
+    }
+
+    // Un filtre doit toujours être visible : si la couche ERP a été
+    // masquée depuis la légende, on la réaffiche (les bâtiments n'ont pas
+    // ce problème, ils n'ont pas de case à cocher dédiée).
+    if (tile.layerKey === "erp" && !map.hasLayer(layers.erp)) {
+      map.addLayer(layers.erp);
+      erpToggle.checked = true;
+    }
+
+    let matchCount = 0;
+    let combined = L.latLngBounds([]);
+    eachFeatureLayer(layers[tile.layerKey], (leaf) => {
+      if (tile.predicate(leaf.feature.properties)) {
+        matchCount += 1;
+        leaf.setStyle({
+          color: DASHBOARD_HIGHLIGHT_STROKE,
+          weight: 2,
+          fillColor: DASHBOARD_HIGHLIGHT_FILL,
+          fillOpacity: 0.9,
+          opacity: 1,
+        });
+        if (leaf.setRadius) leaf.setRadius(9);
+        if (leaf.bringToFront) leaf.bringToFront();
+        combined.extend(leaf.getBounds ? leaf.getBounds() : leaf.getLatLng());
+      } else {
+        leaf.setStyle({ opacity: 0.12, fillOpacity: 0.06 });
+        if (leaf.setRadius) leaf.setRadius(5);
+      }
+    });
+
+    dashboardActiveTileId = tile.id;
+    dashboardActiveLayerKey = tile.layerKey;
+
+    dashboardGroups.querySelectorAll(".dashboard-tile").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.tileId === tile.id));
+    });
+
+    dashboardActiveFilterLabel.textContent =
+      matchCount > 1 ? `${matchCount} éléments surlignés sur la carte` : `${matchCount} élément surligné sur la carte`;
+    dashboardActiveFilter.hidden = false;
+
+    if (combined.isValid()) {
+      map.flyToBounds(combined, { padding: [48, 48], maxZoom: 17, duration: 0.6 });
+    }
+  }
+
+  function clearDashboardFilter() {
+    if (dashboardActiveLayerKey) restoreLayerStyles(dashboardActiveLayerKey);
+    dashboardActiveTileId = null;
+    dashboardActiveLayerKey = null;
+    dashboardGroups.querySelectorAll(".dashboard-tile").forEach((btn) => btn.setAttribute("aria-pressed", "false"));
+    dashboardActiveFilter.hidden = true;
+  }
+
+  dashboardResetBtn.addEventListener("click", clearDashboardFilter);
+
+  document.addEventListener("app:data-ready", initDashboard);
 
   /* ----------------------------------------------------------------------
    * Menu mobile

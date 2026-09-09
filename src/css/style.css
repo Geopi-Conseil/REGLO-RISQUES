@@ -457,6 +457,155 @@ footer.site-footer {
   border: 1px solid rgba(0,0,0,0.15);
 }
 
+/* --------------------------- Tableau de bord ------------------------------
+   Même principe bouton + panneau déroulant que la légende, à l'attention
+   des élus/techniciens : agrégats communaux dont chaque donnée est
+   cliquable pour surligner les bâtiments correspondants sur la carte
+   (voir dashboardHighlight dans src/js/app.js). */
+
+.dashboard-wrapper {
+  position: relative;
+  flex: none;
+}
+
+.dashboard-box {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  padding: 14px 16px;
+  font-size: 13px;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  display: none;
+}
+
+.dashboard-box.open {
+  display: block;
+}
+
+.dashboard-box h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.dashboard-intro {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.dashboard-active-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+/* Le sélecteur ci-dessus a la même spécificité que la règle [hidden] du
+   navigateur (display:none) : sans cette surcharge explicite, l'ordre des
+   règles ferait gagner .dashboard-active-filter et la puce resterait
+   visible même une fois l'attribut hidden posé par le JS. */
+.dashboard-active-filter[hidden] {
+  display: none;
+}
+
+.dashboard-active-filter button {
+  flex: none;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.dashboard-group + .dashboard-group {
+  margin-top: 14px;
+}
+
+.dashboard-group h4 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.dashboard-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  margin-bottom: 6px;
+  font: inherit;
+  color: var(--color-text);
+}
+
+.dashboard-tile:last-child {
+  margin-bottom: 0;
+}
+
+.dashboard-tile:hover,
+.dashboard-tile:focus-visible {
+  border-color: var(--color-primary);
+}
+
+.dashboard-tile-count {
+  flex: none;
+  min-width: 32px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-primary);
+  text-align: right;
+}
+
+.dashboard-tile-label {
+  flex: 1;
+  line-height: 1.25;
+}
+
+.dashboard-tile.sub {
+  margin-left: 18px;
+  width: calc(100% - 18px);
+  background: transparent;
+  border-style: dashed;
+}
+
+.dashboard-tile-zone .legend-swatch {
+  flex: none;
+}
+
+/* Placée après .dashboard-tile.sub (même spécificité que lui) pour que
+   l'état actif l'emporte toujours, y compris sur une sous-tuile dont le
+   fond transparent écraserait sinon le fond bleu ci-dessous. */
+.dashboard-tile[aria-pressed="true"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.dashboard-tile[aria-pressed="true"] .dashboard-tile-count {
+  color: #fff;
+}
+
 /* ------------------------------ Panneau info ----------------------------- */
 
 .info-panel {
