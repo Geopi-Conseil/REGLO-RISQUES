@@ -123,6 +123,10 @@ img { max-width: 100%; }
   height: 34px;
   width: auto;
   display: block;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  box-sizing: content-box;
 }
 
 .app-header .brand .brand-text {
