@@ -158,7 +158,7 @@ restrictives sur certains points (attribution obligatoire notamment).
 - Ajouter le projet QGIS source et le GeoPackage au dépôt (ou à un stockage
   Git LFS / dépôt de données séparé) pour une traçabilité complète.
 - Page "atlas imprimable" par secteur, pour les réunions publiques.
-- Réduire encore les 1 368 bâtiments de typologie indéterminée restants
+- Réduire encore les 1 664 bâtiments de typologie indéterminée restants
   (voir `docs/METHODOLOGIE.md` §8 et §10) : croisement cadastral
   complémentaire, ou vérification terrain ciblée sur les bâtiments en zone
   réglementée.

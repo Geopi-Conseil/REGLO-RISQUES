@@ -68,6 +68,30 @@ l'outil combine deux sources, par ordre de priorité :
    niveau existant ») : les champs `nombre_d_etages` (BD TOPO) et
    `nb_niveau` (BDNB Fichiers Fonciers) se sont révélés peu fiables pour
    une part significative des bâtiments à plusieurs niveaux de la commune.
+4. **Contrôle inverse (sur-déclaration).** Pour les bâtiments enrichis par
+   la BDNB (§10) déclarant un nombre de logements élevé (≥ 10) mais une
+   hauteur mesurée incompatible avec le nombre de niveaux déclaré (moins
+   de 2,5 m par niveau en moyenne), l'enrichissement BDNB est annulé plutôt
+   que de conserver une présence d'étage douteuse : la jointure spatiale
+   `batiment_groupe` (§10) a très probablement rattaché au bâtiment un
+   ensemble immobilier voisin plus grand que lui. La signature retenue
+   pour déclencher cette annulation (et non un simple écart hauteur/
+   niveaux, trop fréquent pour être fiable à lui seul) a été confirmée en
+   observant plusieurs bâtiments BD TOPO distincts partageant exactement
+   le même nombre de logements/niveaux déclaré (ex. 18 bâtiments partageant
+   « 18 niveaux, 447 logements », manifestement le total d'un seul grand
+   ensemble). Le bâtiment repasse alors en « typologie indéterminée »
+   (comme s'il n'avait jamais été enrichi, §10), et sa présence d'étage est
+   réévaluée uniquement par la hauteur (point 2). Correction appliquée à
+   296 bâtiments sur la commune (dont 17 en zone réglementée, faisant
+   basculer l'obligation de zone refuge de « OBLIGATOIRE... aménagement
+   possible sur un niveau existant » vers « non requise, à qualifier sur
+   site ») : c'est le sens le plus risqué à corriger, une fausse indication
+   d'étage disponible pouvant laisser croire à tort qu'un refuge existe en
+   cas de crue. En dessous du seuil de 10 logements déclarés, l'écart
+   hauteur/niveaux reste possible sans signature fiable de rattachement
+   erroné (bâtiment collectif réellement bas, mesure LiDAR imprécise...) et
+   n'est pas corrigé automatiquement (voir §8).
 
 Si aucune des sources n'est disponible, le champ `etage_present` vaut
 `"Inconnu"`.
@@ -139,7 +163,8 @@ de confiance).
 
 ## 8. Limites connues
 
-- Malgré l'enrichissement BDNB (§10), 1 368 bâtiments restent en
+- Malgré l'enrichissement BDNB (§10) et son contrôle a posteriori (§3
+  point 4, §10 point 6), 1 664 bâtiments restent en
   « typologie indéterminée » (aucune correspondance BDNB trouvée, ou
   bâtiment également absent des Fichiers Fonciers, cas fréquent pour de
   petites annexes ou des constructions très récentes) : la donnée source ne
@@ -154,13 +179,22 @@ de confiance).
   non par identifiant commun ; en cas de bâtiments très rapprochés ou d'un
   `batiment_groupe` regroupant plusieurs bâtiments BD TOPO contigus, la
   typologie/le nombre de logements attribués sont ceux du groupe BDNB dans
-  son ensemble, pas nécessairement ceux du bâtiment individuel exact.
-- Le contrôle de cohérence hauteur/niveaux (§3) ne corrige que le cas où
-  la source déclarative *sous-estime* le nombre de niveaux (le plus
-  risqué, car il peut conclure à tort à l'absence d'étage) ; le cas
-  inverse (niveaux déclarés ≥ 2 mais hauteur très faible) n'est pas
-  corrigé et reste possible marginalement. Plus largement, `nombre_d_etages`
-  et `nb_niveau` restent des champs déclaratifs/administratifs, pas une
+  son ensemble, pas nécessairement ceux du bâtiment individuel exact. Le
+  contrôle du §3 (point 4) détecte et annule les cas les plus flagrants de
+  cette confusion (logements déclarés ≥ 10 et hauteur incompatible), mais
+  ne garantit pas d'avoir isolé tous les cas, notamment en dessous de ce
+  seuil.
+- Le contrôle de cohérence hauteur/niveaux (§3, point 3) corrige la
+  sous-déclaration de niveaux ; le contrôle inverse (§3, point 4) corrige
+  la sur-déclaration, mais seulement pour les bâtiments enrichis par la
+  BDNB avec un nombre de logements déclaré ≥ 10 et une hauteur incompatible
+  (signature d'un rattachement erroné à un `batiment_groupe` voisin plus
+  grand). En dessous de ce seuil, ou pour les bâtiments sourcés directement
+  par le champ BD TOPO `nombre_d_etages`, un écart hauteur/niveaux reste
+  possible sans être corrigé automatiquement : la donnée seule ne permet
+  pas de distinguer un vrai bâtiment collectif bas d'une erreur de
+  déclaration ou de mesure. Plus largement, `nombre_d_etages` et
+  `nb_niveau` restent des champs déclaratifs/administratifs, pas une
   mesure directe : une vérification terrain reste recommandée pour toute
   décision engageant des travaux structurels (§4).
 
@@ -215,13 +249,23 @@ classification BD TOPO.
    valeur par défaut) de `"BDNB (Fichiers Fonciers, millésime 2026-02.a)"`,
    affiché dans le panneau « Détails techniques » de chaque bâtiment
    concerné.
+6. **Contrôle a posteriori.** Après qu'une vérification terrain a révélé
+   des incohérences hauteur/logements sur des bâtiments enrichis par la
+   BDNB, un contrôle automatique (§3, point 4) annule cet enrichissement
+   pour les bâtiments présentant la signature d'un rattachement erroné au
+   `batiment_groupe` (296 bâtiments sur la commune, dont 17 en zone
+   réglementée) ; ces bâtiments repassent en « typologie indéterminée ».
 
 **Résultat pour Septèmes-les-Vallons (millésime BDNB 2026-02.a) :** sur les
 3 515 bâtiments initialement indéterminés, 2 147 obtiennent une
-correspondance BDNB exploitable (dont 269 situés en zone réglementée PPRi,
-avec obligations complètes recalculées, 68 d'entre eux déclenchent
-l'obligation de zone refuge, jusqu'alors invisible) ; 1 368 restent
-indéterminés (voir §8).
+correspondance BDNB exploitable dont 269 en zone réglementée PPRi (avec
+obligations complètes recalculées, 68 déclenchant l'obligation de zone
+refuge jusqu'alors invisible) ; 1 368 restent indéterminés. Après le
+contrôle a posteriori du point 6 ci-dessus, 296 bâtiments enrichis sont
+réévalués comme indéterminés (17 en zone réglementée, dont l'obligation de
+zone refuge était erronément déclenchée) : au total 1 851 bâtiments
+conservent une correspondance BDNB exploitable, 51 déclenchent
+l'obligation de zone refuge, et 1 664 restent indéterminés (voir §8).
 
 **Licence et attribution :** données BDNB sous Licence Ouverte / Open
 Licence version 2.0 (Etalab), comme BD TOPO®. Voir `mentions-legales.html`.
