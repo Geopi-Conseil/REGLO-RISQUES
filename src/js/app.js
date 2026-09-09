@@ -775,6 +775,46 @@
   let dashboardActiveTileId = null;
   let dashboardActiveLayerKey = null;
 
+  // Repères temporaires (« radar ») affichés au moment du clic sur une
+  // tuile : à l'échelle communale, un bâtiment surligné reste un minuscule
+  // polygone, difficile à repérer d'un coup d'œil. Un cercle de taille
+  // fixe en pixels (donc toujours visible, quel que soit le zoom), qui
+  // clignote quelques secondes puis disparaît, attire l'œil sans polluer
+  // durablement la carte (le bâtiment reste surligné en continu, lui).
+  const dashboardBeacons = L.layerGroup().addTo(map);
+  let dashboardBeaconTimers = [];
+
+  function clearDashboardBeacons() {
+    dashboardBeaconTimers.forEach((t) => clearTimeout(t));
+    dashboardBeaconTimers = [];
+    dashboardBeacons.clearLayers();
+  }
+
+  function spawnDashboardBeacon(latlng) {
+    const beacon = L.circleMarker(latlng, {
+      radius: 16,
+      color: DASHBOARD_HIGHLIGHT_STROKE,
+      weight: 2,
+      fillColor: DASHBOARD_HIGHLIGHT_FILL,
+      fillOpacity: 0.5,
+      opacity: 0.9,
+      interactive: false,
+      className: "dashboard-beacon",
+    }).addTo(dashboardBeacons);
+    dashboardBeaconTimers.push(setTimeout(() => dashboardBeacons.removeLayer(beacon), 2600));
+  }
+
+  // Les ERP sont déjà des points (contrairement aux bâtiments) : on fait
+  // clignoter le marqueur lui-même plutôt que de superposer un repère.
+  function pulseMarker(leaf) {
+    if (!leaf._path) return;
+    leaf._path.classList.remove("dashboard-beacon");
+    // Force un reflow pour pouvoir relancer l'animation CSS si elle vient
+    // déjà de jouer sur ce même élément (ex. deux clics rapprochés).
+    void leaf._path.offsetWidth;
+    leaf._path.classList.add("dashboard-beacon");
+  }
+
   function setDashboardOpen(open) {
     dashboardBox.classList.toggle("open", open);
     dashboardToggle.setAttribute("aria-expanded", String(open));
@@ -881,6 +921,7 @@
 
   function applyDashboardFilter(tile) {
     clearSelection();
+    clearDashboardBeacons();
     if (dashboardActiveLayerKey && dashboardActiveLayerKey !== tile.layerKey) {
       restoreLayerStyles(dashboardActiveLayerKey);
     }
@@ -895,6 +936,7 @@
 
     let matchCount = 0;
     let combined = L.latLngBounds([]);
+    const matched = [];
     eachFeatureLayer(layers[tile.layerKey], (leaf) => {
       if (tile.predicate(leaf.feature.properties)) {
         matchCount += 1;
@@ -907,7 +949,14 @@
         });
         if (leaf.setRadius) leaf.setRadius(9);
         if (leaf.bringToFront) leaf.bringToFront();
-        combined.extend(leaf.getBounds ? leaf.getBounds() : leaf.getLatLng());
+        if (leaf.getBounds) {
+          const bounds = leaf.getBounds();
+          combined.extend(bounds);
+          matched.push({ centroid: bounds.getCenter() });
+        } else {
+          combined.extend(leaf.getLatLng());
+          matched.push({ marker: leaf });
+        }
       } else {
         leaf.setStyle({ opacity: 0.12, fillOpacity: 0.06 });
         if (leaf.setRadius) leaf.setRadius(5);
@@ -925,13 +974,25 @@
       matchCount > 1 ? `${matchCount} éléments surlignés sur la carte` : `${matchCount} élément surligné sur la carte`;
     dashboardActiveFilter.hidden = false;
 
+    // Le clignotement démarre une fois la carte stabilisée sur les
+    // éléments trouvés (sinon les repères se dessinent pendant le
+    // recentrage et paraissent décalés). Sans recentrage nécessaire
+    // (bounds déjà invalides ou vue inchangée), on le déclenche tout de
+    // suite.
+    const spawnBeacons = () => {
+      matched.forEach((m) => (m.centroid ? spawnDashboardBeacon(m.centroid) : pulseMarker(m.marker)));
+    };
     if (combined.isValid()) {
+      map.once("moveend", spawnBeacons);
       map.flyToBounds(combined, { padding: [48, 48], maxZoom: 17, duration: 0.6 });
+    } else {
+      spawnBeacons();
     }
   }
 
   function clearDashboardFilter() {
     if (dashboardActiveLayerKey) restoreLayerStyles(dashboardActiveLayerKey);
+    clearDashboardBeacons();
     dashboardActiveTileId = null;
     dashboardActiveLayerKey = null;
     dashboardGroups.querySelectorAll(".dashboard-tile").forEach((btn) => btn.setAttribute("aria-pressed", "false"));

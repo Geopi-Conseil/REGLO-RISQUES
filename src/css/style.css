@@ -846,6 +846,25 @@ details.tech-details dd {
   border-radius: var(--radius-md);
 }
 
+/* ---------------- Repères clignotants du tableau de bord ----------------
+   Voir dashboardBeacons / spawnDashboardBeacon dans src/js/app.js : un
+   bâtiment surligné reste minuscule à l'échelle communale, ce cercle en
+   pixels fixes (donc de taille constante quel que soit le zoom) clignote
+   deux fois puis est retiré de la carte. */
+
+@keyframes dashboard-beacon-ping {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  70% { transform: scale(2); opacity: 0; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.dashboard-beacon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dashboard-beacon-ping 1.3s ease-out 2;
+  pointer-events: none;
+}
+
 /* -------------------------------- Utilitaires ---------------------------- */
 
 .visually-hidden {
