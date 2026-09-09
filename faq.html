@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Questions fréquentes — Mes obligations inondation</title>
+  <meta name="description" content="Réponses aux questions fréquentes sur l'outil et sur le PPRi inondation de Septèmes-les-Vallons.">
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>">
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu principal</a>
+  <header class="app-header">
+    <a class="brand" href="index.html">
+      <span class="pictogram" aria-hidden="true">🌊</span>
+      <span class="brand-text">Mes obligations inondation<small>Septèmes-les-Vallons — outil non-officiel</small></span>
+    </a>
+    <nav aria-label="Navigation principale">
+      <a href="index.html">Carte</a>
+      <a href="glossaire.html">Glossaire</a>
+      <a href="faq.html" aria-current="page">FAQ</a>
+      <a href="mentions-legales.html">Mentions légales</a>
+    </nav>
+    <button class="menu-toggle" id="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="mobile-nav">☰</button>
+  </header>
+  <nav id="mobile-nav" class="mobile-nav" aria-label="Navigation mobile">
+    <a href="index.html">🗺️ Carte</a>
+    <a href="glossaire.html">📖 Glossaire</a>
+    <a href="faq.html">❓ Questions fréquentes</a>
+    <a href="mentions-legales.html">⚖️ Mentions légales</a>
+  </nav>
+
+  <main id="contenu" class="content-page">
+    <h1>Questions fréquentes</h1>
+
+    <details class="faq-item" open>
+      <summary>Cet outil est-il un document officiel ?</summary>
+      <p>
+        Non. C'est un outil <strong>indépendant et informatif</strong>, qui
+        vulgarise et met en carte le règlement du PPRi approuvé par la
+        Préfecture des Bouches-du-Rhône. En cas de doute ou de démarche
+        administrative (permis de construire, déclaration de travaux...),
+        seuls le règlement officiel du PPRi et l'avis du service urbanisme de
+        la mairie font foi. Voir les <a href="mentions-legales.html">mentions légales</a>.
+      </p>
+    </details>
+
+    <details class="faq-item">
+      <summary>Mon bâtiment n'apparaît pas comme concerné, suis-je totalement à l'abri ?</summary>
+      <p>
+        Le PPRi « Aygalades (Caravelle) et affluents » couvre un phénomène
+        précis (débordement de cours d'eau). D'autres risques peuvent exister
+        (ruissellement pluvial, autres aléas) sans être cartographiés par ce
+        PPRi. Consultez <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noopener">Géorisques</a>
+        pour une vue d'ensemble des risques à votre adresse.
+      </p>
+    </details>
+
+    <details class="faq-item">
+      <summary>D'où viennent les données affichées ?</summary>
+      <p>
+        Le zonage réglementaire provient du PPRi approuvé, publié par la
+        DDTM des Bouches-du-Rhône. Les bâtiments proviennent de la BD TOPO®
+        de l'IGN, croisés géographiquement avec le zonage. Les établissements
+        recevant du public proviennent de la base nationale Acceslibre. Le
+        détail est donné dans <a href="https://github.com/" target="_blank" rel="noopener">le dépôt du projet</a> (fichier
+        <code>docs/METHODOLOGIE.md</code>).
+      </p>
+    </details>
+
+    <details class="faq-item">
+      <summary>Pourquoi certains bâtiments n'ont pas toutes les informations (typologie, étage...) ?</summary>
+      <p>
+        Certaines informations (nombre de logements, présence d'un étage,
+        usage précis) sont estimées à partir de données publiques qui ne sont
+        pas exhaustives à l'échelle du bâtiment individuel. Lorsque la donnée
+        est incertaine ou absente, l'outil l'indique explicitement plutôt que
+        de deviner.
+      </p>
+    </details>
+
+    <details class="faq-item">
+      <summary>Pourquoi les cotes précises de crue (PHE) ne sont-elles pas affichées ?</summary>
+      <p>
+        Pour Septèmes-les-Vallons, ces cotes ne sont disponibles à ce jour que
+        sous forme de plan scanné (PDF), sans version cartographique
+        exploitable directement. Les intégrer de façon fiable nécessite un
+        calage géographique précis, en cours de finalisation. En attendant,
+        le plan officiel des cotes PHE reste consultable auprès de la DDTM ou
+        de la mairie.
+      </p>
+    </details>
+
+    <details class="faq-item">
+      <summary>Je suis gestionnaire d'un ERP ou d'une activité économique, que dois-je faire ?</summary>
+      <p>
+        Cliquez sur votre établissement (ou recherchez son adresse) : le
+        panneau d'information indique la zone réglementaire, les seuils de
+        travaux applicables et, le cas échéant, votre éligibilité au Fonds
+        Barnier. Un diagnostic de vulnérabilité réalisé par un professionnel
+        reste la démarche de référence pour vos obligations précises.
+      </p>
+    </details>
+
+    <details class="faq-item">
+      <summary>J'ai trouvé une erreur, comment la signaler ?</summary>
+      <p>
+        Ouvrez une « issue » sur le dépôt du projet en décrivant le bâtiment
+        concerné (adresse ou identifiant BD TOPO) et l'erreur constatée. Voir
+        le fichier <code>CONTRIBUTING.md</code> du dépôt.
+      </p>
+    </details>
+
+    <footer class="site-footer">
+      <p><a href="index.html">← Retour à la carte</a></p>
+    </footer>
+  </main>
+
+  <script src="src/js/nav.js"></script>
+</body>
+</html>
