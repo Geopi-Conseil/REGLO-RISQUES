@@ -851,6 +851,22 @@ details.correction-block summary {
   margin: 10px 0 0;
 }
 
+/* ---------------- Mesures recommandées ou obligatoires ------------------- */
+
+.measure-block {
+  margin-bottom: 14px;
+}
+
+.measure-block:last-child {
+  margin-bottom: 0;
+}
+
+.measure-block h4 {
+  font-size: 0.85rem;
+  margin: 0 0 4px;
+  color: var(--color-primary-dark);
+}
+
 .panel-close {
   position: absolute;
   top: 10px;

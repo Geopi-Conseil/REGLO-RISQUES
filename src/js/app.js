@@ -313,6 +313,14 @@
     }
   }
 
+  // Certains champs numériques de l'export GeoJSON portent la chaîne
+  // littérale "NULL" plutôt qu'une valeur JSON null (voir
+  // scripts/export_geojson.py) : ce garde-fou évite d'afficher "NULL" tel
+  // quel dans le panneau (ex. nombre de logements, hauteur inconnus).
+  function hasValue(v) {
+    return v !== null && v !== undefined && v !== "" && v !== "NULL";
+  }
+
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
@@ -498,7 +506,7 @@
       </label>`;
     return `
       <details class="correction-block" ${override ? "open" : ""}>
-        <summary>✏️ Ce n'est pas votre cas ? Précisez votre bâtiment</summary>
+        <summary>✏️ Une erreur ? Corrigez-la pour voir vos obligations</summary>
         <div class="correction-body">
           <p class="text-muted">
             Les données publiques (IGN BD TOPO, BDNB) peuvent se tromper à
@@ -606,76 +614,103 @@
 
     const sections = [];
 
-    // --- Résumé / régime ---
+    // --- Résumé (badge de zone uniquement ; le régime est détaillé plus bas
+    //     dans « Règles de construction et travaux ») ---
     sections.push(`
       <div class="intro-block">
         ${badge(CONFIG.zoneShortNames[eff.zoneCode] || eff.zoneCode, eff.zoneColor)}
-        <p>${escapeHtml(eff.regime || "Consultez le règlement du PPRi pour le régime applicable à ce bâtiment.")}</p>
         ${eff.overridden ? `<p class="correction-active-note">✏️ Affichage basé sur votre déclaration ci-dessous.</p>` : ""}
       </div>
     `);
 
+    // --- Type de bâtiment (typologie + caractéristiques) ---
+    {
+      const typoSrc = eff.typologieSource ? `Source : ${eff.typologieSource}` : "Source : BD TOPO®";
+      const chips = [];
+      if (eff.etagePresent) {
+        chips.push(`<div class="figure-chip"><strong>${escapeHtml(eff.etagePresent)}</strong>étage présent</div>`);
+      }
+      if (hasValue(eff.nbLogements)) {
+        chips.push(`<div class="figure-chip"><strong>${escapeHtml(String(eff.nbLogements))}</strong>logement(s)</div>`);
+      }
+      if (hasValue(eff.hauteurM)) {
+        chips.push(`<div class="figure-chip"><strong>${eff.hauteurM} m</strong>hauteur (BD TOPO)</div>`);
+      }
+      sections.push(
+        section(
+          "🏠",
+          "Type de bâtiment",
+          `<p><strong>${escapeHtml(eff.typologie || "Typologie non déterminée")}</strong></p>` +
+            (chips.length ? `<div class="figure-row">${chips.join("")}</div>` : "") +
+            `<p class="text-muted">${escapeHtml(typoSrc)}${eff.etageSource ? " · étage : " + escapeHtml(eff.etageSource) : ""}</p>`
+        )
+      );
+    }
+
     // --- Correction déclarative du visiteur ---
     sections.push(renderCorrectionBlock(p, override));
 
-    // --- Diagnostic de vulnérabilité ---
-    if (eff.diagnostic) {
-      sections.push(section("🔎", "Diagnostic de vulnérabilité", `<p>${escapeHtml(eff.diagnostic)}</p>`));
-    }
-
-    // --- Zone refuge ---
-    if (eff.zoneRefuge || eff.refugeCategorie) {
-      const isObligatoire = (eff.refugeCategorie || "").startsWith("Obligatoire");
+    // --- Règles de construction et travaux (régime + obligations liées à la
+    //     typologie + seuils de travaux sur l'existant) ---
+    {
+      let travauxHtml = "";
+      if (eff.empriseFiable === "Oui" && (eff.annexeMaxM2 || eff.extensionHebergementM2 || eff.extensionActiviteM2)) {
+        const chips = [];
+        if (eff.empriseSolM2) {
+          chips.push(`<div class="figure-chip"><strong>${eff.empriseSolM2} m²</strong>emprise au sol actuelle</div>`);
+        }
+        if (eff.annexeMaxM2) {
+          chips.push(`<div class="figure-chip"><strong>${eff.annexeMaxM2} m²</strong>annexe autorisée (création)</div>`);
+        }
+        if (eff.extensionHebergementM2) {
+          chips.push(
+            `<div class="figure-chip"><strong>${eff.extensionHebergementM2} m²</strong>extension hébergement</div>`
+          );
+        }
+        if (eff.extensionActiviteM2) {
+          chips.push(
+            `<div class="figure-chip"><strong>${eff.extensionActiviteM2} m²</strong>extension activité (approx.)</div>`
+          );
+        } else if (eff.extensionActiviteNote) {
+          chips.push(`<div class="figure-chip">Extension activité : voir note</div>`);
+        }
+        travauxHtml =
+          `<div class="figure-row">${chips.join("")}</div>` +
+          (eff.extensionActiviteNote ? `<p class="text-muted">${escapeHtml(eff.extensionActiviteNote)}</p>` : "") +
+          `<p class="text-muted">Seuils calculés à partir de la géométrie du bâtiment (emprise au sol réelle) ; à confirmer par un professionnel avant tout dépôt de dossier.</p>`;
+      } else if (eff.empriseFiable && eff.empriseFiable.startsWith("Non")) {
+        travauxHtml = `<p class="text-muted">Emprise au sol trop réduite pour un calcul de seuil fiable à partir des données disponibles (annexe, abri...). Se référer directement au règlement du PPRi.</p>`;
+      }
       sections.push(
         section(
-          "🛟",
-          "Zone refuge",
-          `<p>${escapeHtml(eff.zoneRefuge || eff.refugeCategorie)}</p>` +
+          "🏗️",
+          "Règles de construction et travaux",
+          `<p>${escapeHtml(eff.regime || "Consultez le règlement du PPRi pour le régime applicable à ce bâtiment.")}</p>` +
+            (eff.obligationsTypologie ? `<p>${escapeHtml(eff.obligationsTypologie)}</p>` : "") +
+            travauxHtml
+        )
+      );
+    }
+
+    // --- Mesures recommandées ou obligatoires (diagnostic + zone refuge) ---
+    {
+      const blocks = [];
+      if (eff.diagnostic) {
+        blocks.push(`<div class="measure-block"><h4>🔎 Diagnostic de vulnérabilité</h4><p>${escapeHtml(eff.diagnostic)}</p></div>`);
+      }
+      if (eff.zoneRefuge || eff.refugeCategorie) {
+        const isObligatoire = (eff.refugeCategorie || "").startsWith("Obligatoire");
+        blocks.push(
+          `<div class="measure-block"><h4>🛟 Zone refuge</h4><p>${escapeHtml(eff.zoneRefuge || eff.refugeCategorie)}</p>` +
             (isObligatoire
               ? `<p class="text-muted">Une zone refuge est un niveau du bâtiment situé au-dessus des plus hautes eaux connues, permettant d'attendre les secours en cas de crue.</p>`
-              : "")
-        )
-      );
-    }
-
-    // --- Travaux sur l'existant / emprise au sol ---
-    if (eff.empriseFiable === "Oui" && (eff.annexeMaxM2 || eff.extensionHebergementM2 || eff.extensionActiviteM2)) {
-      const chips = [];
-      if (eff.empriseSolM2) {
-        chips.push(`<div class="figure-chip"><strong>${eff.empriseSolM2} m²</strong>emprise au sol actuelle</div>`);
-      }
-      if (eff.annexeMaxM2) {
-        chips.push(`<div class="figure-chip"><strong>${eff.annexeMaxM2} m²</strong>annexe autorisée (création)</div>`);
-      }
-      if (eff.extensionHebergementM2) {
-        chips.push(
-          `<div class="figure-chip"><strong>${eff.extensionHebergementM2} m²</strong>extension hébergement</div>`
+              : "") +
+            `</div>`
         );
       }
-      if (eff.extensionActiviteM2) {
-        chips.push(
-          `<div class="figure-chip"><strong>${eff.extensionActiviteM2} m²</strong>extension activité (approx.)</div>`
-        );
-      } else if (eff.extensionActiviteNote) {
-        chips.push(`<div class="figure-chip">Extension activité : voir note</div>`);
+      if (blocks.length) {
+        sections.push(section("⚠️", "Mesures recommandées ou obligatoires", blocks.join("")));
       }
-      sections.push(
-        section(
-          "📐",
-          "Travaux sur l'existant",
-          `<div class="figure-row">${chips.join("")}</div>` +
-            (eff.extensionActiviteNote ? `<p class="text-muted">${escapeHtml(eff.extensionActiviteNote)}</p>` : "") +
-            `<p class="text-muted">Seuils calculés à partir de la géométrie du bâtiment (emprise au sol réelle) ; à confirmer par un professionnel avant tout dépôt de dossier.</p>`
-        )
-      );
-    } else if (eff.empriseFiable && eff.empriseFiable.startsWith("Non")) {
-      sections.push(
-        section(
-          "📐",
-          "Travaux sur l'existant",
-          `<p class="text-muted">Emprise au sol trop réduite pour un calcul de seuil fiable à partir des données disponibles (annexe, abri...). Se référer directement au règlement du PPRi.</p>`
-        )
-      );
     }
 
     // --- Aides financières ---
@@ -683,21 +718,9 @@
       sections.push(section("💶", "Aides financières (Fonds Barnier)", `<p>${escapeHtml(eff.eligibiliteFprnm)}</p>`));
     }
 
-    // --- Obligations liées à la typologie ---
-    if (eff.obligationsTypologie) {
-      sections.push(section("📋", "Obligations liées à ce type de bâtiment", `<p>${escapeHtml(eff.obligationsTypologie)}</p>`));
-    }
-
     // --- Détails techniques (repliés) ---
     const techRows = [];
     if (eff.zonesIntersectees) techRows.push(techRow("Zones intersectées", eff.zonesIntersectees));
-    if (eff.typologie) {
-      const src = eff.typologieSource ? ` (source : ${eff.typologieSource})` : " (source : BD TOPO®)";
-      techRows.push(techRow("Typologie", `${eff.typologie}${src}`));
-    }
-    if (eff.etagePresent) techRows.push(techRow("Étage présent", `${eff.etagePresent}${eff.etageSource ? " - " + eff.etageSource : ""}`));
-    if (eff.nbLogements) techRows.push(techRow("Nombre de logements", eff.nbLogements));
-    if (eff.hauteurM) techRows.push(techRow("Hauteur du bâti (BD TOPO)", `${eff.hauteurM} m`));
     if (eff.id) techRows.push(techRow("Identifiant BD TOPO", eff.id));
 
     if (techRows.length) {
