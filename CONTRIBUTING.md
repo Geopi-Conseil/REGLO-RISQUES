@@ -25,7 +25,7 @@ Ne pas modifier les fichiers `data/*.geojson` à la main.
 - Respecter le style existant (JavaScript vanilla, CSS avec variables,
   commentaires en français comme le reste du projet).
 - Toute nouvelle information affichée dans la fiche bâtiment doit rester
-  compréhensible par un particulier sans vocabulaire technique préalable —
+  compréhensible par un particulier sans vocabulaire technique préalable :
   les détails techniques vont dans le bloc `<details>` dédié.
 - Tester au minimum sur un viewport mobile étroit (< 400 px) et sur desktop
   avant de proposer une modification d'interface.

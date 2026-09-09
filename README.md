@@ -1,4 +1,4 @@
-# Mes obligations face au risque inondation — Septèmes-les-Vallons
+# Mes obligations face au risque inondation - Septèmes-les-Vallons
 
 Webmap indépendante qui aide les habitants, les gestionnaires d'établissements
 recevant du public (ERP) ou d'activités, ainsi que les élus et techniciens, à
@@ -12,7 +12,7 @@ la zone réglementaire, le régime applicable, le diagnostic de vulnérabilité
 attendu, l'obligation éventuelle de zone refuge, les seuils de travaux sur
 l'existant, et l'éligibilité indicative au Fonds Barnier.
 
-**⚠️ Outil non officiel**, à vocation pédagogique — voir
+**⚠️ Outil non officiel**, à vocation pédagogique : voir
 [`mentions-legales.html`](mentions-legales.html) et
 [`docs/METHODOLOGIE.md`](docs/METHODOLOGIE.md) pour les sources, la
 méthode de calcul et les limites.
@@ -22,15 +22,15 @@ méthode de calcul et les limites.
 | | |
 |---|---|
 | **Public visé** | Particuliers, gestionnaires d'ERP/activités, élus, techniciens |
-| **Stack** | HTML/CSS/JS statique, sans framework ni étape de build — [Leaflet](https://leafletjs.com/) pour la carte |
+| **Stack** | HTML/CSS/JS statique, sans framework ni étape de build ; [Leaflet](https://leafletjs.com/) pour la carte |
 | **Données** | GeoJSON statiques dans `data/`, régénérées depuis QGIS |
 | **Hébergement** | N'importe quel hébergeur de fichiers statiques (GitHub Pages, Netlify, serveur mutualisé...) |
 
 ## Choix d'expérience utilisateur (UX)
 
 - **Divulgation progressive plutôt qu'un sélecteur de profil.** Plutôt que de
-  proposer trois parcours distincts (particulier / gestionnaire / élu) —
-  coûteux à maintenir et à tenir à jour de façon cohérente — chaque fiche
+  proposer trois parcours distincts (particulier / gestionnaire / élu),
+  coûteux à maintenir et à tenir à jour de façon cohérente, chaque fiche
   bâtiment affiche d'abord une réponse courte, en langage clair, puis des
   sections dépliables (diagnostic, zone refuge, travaux, aides financières)
   et un bloc « détails techniques » replié par défaut, à l'attention des
@@ -55,7 +55,7 @@ méthode de calcul et les limites.
 ## Démarrage rapide
 
 Site 100 % statique : aucune compilation n'est nécessaire. Pour le tester en
-local (obligatoire pour que les fichiers `data/*.geojson` se chargent — un
+local (obligatoire pour que les fichiers `data/*.geojson` se chargent : un
 simple double-clic sur `index.html` ne fonctionnera pas à cause des règles
 CORS des navigateurs sur `file://`) :
 
@@ -127,7 +127,7 @@ classés par BD TOPO, etc.) est documenté dans
 Voir le détail complet dans [`mentions-legales.html`](mentions-legales.html).
 En résumé : PPRi (DDTM 13, données publiques), BD TOPO® © IGN (licence
 ouverte Etalab), [BDNB](https://bdnb.io/) (CSTB/ADEME, Fichiers Fonciers,
-Licence Ouverte 2.0 — complète la typologie des bâtiments non classés par
+Licence Ouverte 2.0, complète la typologie des bâtiments non classés par
 BD TOPO, voir `docs/METHODOLOGIE.md` §10), Acceslibre (data.gouv.fr, licence
 ouverte Etalab), fond de carte © contributeurs OpenStreetMap, recherche
 d'adresse via l'API Adresse (Etalab).
@@ -141,7 +141,7 @@ restrictives sur certains points (attribution obligatoire notamment).
 ## Pistes d'amélioration
 
 - Finaliser le calage géographique des planches de cotes PHE (plus hautes
-  eaux) et publier un champ `cotePheM` par bâtiment — voir
+  eaux) et publier un champ `cotePheM` par bâtiment, voir
   `docs/METHODOLOGIE.md` §7.
 - Audit d'accessibilité complet (contraste automatisé, lecteur d'écran,
   navigation clavier exhaustive sur la carte Leaflet).

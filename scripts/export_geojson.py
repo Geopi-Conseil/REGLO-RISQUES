@@ -10,7 +10,7 @@ avec un environnement QGIS), depuis le projet source
     emprise_sol_m2, emprise_fiable, annexe_max_m2, extension_hebergement_m2,
     extension_activite_m2, extension_activite_note, typologie_source
     (typologie_source distingue les bâtiments dont la typologie/étages ont
-    été complétés via la BDNB — cf. docs/METHODOLOGIE.md §10 — des autres,
+    été complétés via la BDNB, cf. docs/METHODOLOGIE.md §10, des autres,
     dérivés directement de BD TOPO®)
   - PPRi - Zonage réglementaire -> champs NOM, CODEZONE, TYPEREG
   - ERP (Acceslibre) -> champs nom, activite, classe_vulnerabilite, adresse,
@@ -40,7 +40,7 @@ from qgis.core import (
 )
 
 # ---------------------------------------------------------------------------
-# Configuration — adapter les noms de couches si besoin
+# Configuration : adapter les noms de couches si besoin
 # ---------------------------------------------------------------------------
 
 LAYER_BATI = "Bâti - Septèmes-les-Vallons (clip commune)"

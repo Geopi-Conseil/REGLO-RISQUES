@@ -1,5 +1,5 @@
 /* =========================================================================
-   Mes obligations face au risque inondation — Septèmes-les-Vallons
+   Mes obligations face au risque inondation - Septèmes-les-Vallons
    Feuille de style principale
    Mobile-first, variables CSS, thème clair uniquement (contexte réglementaire
    -> on privilégie une lecture stable et imprimable plutôt qu'un mode sombre).
@@ -21,7 +21,7 @@
   --color-danger: #b3261e;
   --color-success: #2e7d32;
 
-  /* Couleurs réglementaires des zones PPRi — DOIVENT rester cohérentes avec
+  /* Couleurs réglementaires des zones PPRi : DOIVENT rester cohérentes avec
      data/*.geojson (propriété zoneColor) et docs/METHODOLOGIE.md */
   --zone-bleu-clair: #64b5f6;
   --zone-bleu-fonce: #1565c0;

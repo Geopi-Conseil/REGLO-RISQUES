@@ -1,5 +1,5 @@
 /* =========================================================================
-   Mes obligations face au risque inondation — Septèmes-les-Vallons
+   Mes obligations face au risque inondation - Septèmes-les-Vallons
    Application carte (Leaflet). Aucune dépendance de build : fichier chargé
    tel quel par index.html.
 
@@ -424,7 +424,7 @@
       const src = p.typologieSource ? ` (source : ${p.typologieSource})` : " (source : BD TOPO®)";
       techRows.push(techRow("Typologie", `${p.typologie}${src}`));
     }
-    if (p.etagePresent) techRows.push(techRow("Étage présent", `${p.etagePresent}${p.etageSource ? " — " + p.etageSource : ""}`));
+    if (p.etagePresent) techRows.push(techRow("Étage présent", `${p.etagePresent}${p.etageSource ? " - " + p.etageSource : ""}`));
     if (p.nbLogements) techRows.push(techRow("Nombre de logements", p.nbLogements));
     if (p.hauteurM) techRows.push(techRow("Hauteur du bâti (BD TOPO)", `${p.hauteurM} m`));
     if (p.id) techRows.push(techRow("Identifiant BD TOPO", p.id));
@@ -462,7 +462,7 @@
   function showWelcomePanel() {
     panelZoneDot.style.background = "var(--color-primary)";
     panelTitle.textContent = "Mes obligations face au risque inondation";
-    panelSubtitle.textContent = "Septèmes-les-Vallons — PPRi Aygalades (Caravelle) et affluents";
+    panelSubtitle.textContent = "Septèmes-les-Vallons - PPRi Aygalades (Caravelle) et affluents";
     panelCloseBtn.hidden = true;
     panelBody.innerHTML = `
       <div class="intro-block">

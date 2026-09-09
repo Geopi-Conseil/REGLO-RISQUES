@@ -17,7 +17,7 @@ BD TOPO® IGN (bâtiments) ───────────┤  contraint parmi
 Acceslibre (ERP) ───────────────────┘
         │
         ▼
-GeoPackage QGIS (donnees_septemes.gpkg) — couches enrichies
+GeoPackage QGIS (donnees_septemes.gpkg) : couches enrichies
         │
         ▼
 scripts/export_geojson.py  (reprojection EPSG:4326, nettoyage des champs)
@@ -46,11 +46,11 @@ zones touchées, à titre de traçabilité.
 Faute de donnée directe et exhaustive sur le nombre de niveaux habitables,
 l'outil combine deux sources, par ordre de priorité :
 
-1. **BD TOPO® — `nombre_d_etages`** : quand disponible, une valeur ≥ 2
+1. **BD TOPO® - `nombre_d_etages`** : quand disponible, une valeur ≥ 2
    indique un étage (le rez-de-chaussée est compté comme le premier niveau).
 2. **Estimation par la hauteur du bâti** (`hauteur`, BD TOPO) : à défaut de
    `nombre_d_etages`, un seuil de **5,30 m** est utilisé (calibré
-   empiriquement sur le bâti de la commune) — au-delà, présence d'un étage
+   empiriquement sur le bâti de la commune). Au-delà, présence d'un étage
    jugée probable, la fiabilité de cette estimation étant qualifiée de
    « modérée » dans le champ `etage_source`.
 
@@ -101,7 +101,7 @@ Estimation indicative basée sur la typologie d'occupation déduite de
 - **Typologie indéterminée** → non déterminé, à qualifier sur site.
 
 Depuis l'enrichissement BDNB (§10), la typologie provient soit de BD TOPO,
-soit de la BDNB (Fichiers Fonciers) — le champ `typologieSource` de chaque
+soit de la BDNB (Fichiers Fonciers) : le champ `typologieSource` de chaque
 bâtiment (visible dans le panneau « Détails techniques ») indique laquelle,
 sans changer les règles d'éligibilité ci-dessus.
 
@@ -126,7 +126,7 @@ de confiance).
 
 - Malgré l'enrichissement BDNB (§10), 1 368 bâtiments restent en
   « typologie indéterminée » (aucune correspondance BDNB trouvée, ou
-  bâtiment également absent des Fichiers Fonciers — cas fréquent pour de
+  bâtiment également absent des Fichiers Fonciers, cas fréquent pour de
   petites annexes ou des constructions très récentes) : la donnée source ne
   permet pas de distinguer habitation / activité pour ces bâtiments sans
   visite terrain.
@@ -157,7 +157,7 @@ classification BD TOPO.
 
 1. Requêter l'[API BDNB Open](https://www.data.gouv.fr/dataservices/api-bdnb-open)
    (gratuite, sans clé, `https://api.bdnb.io/v1/bdnb/donnees/…`, syntaxe
-   PostgREST) filtrée sur `code_commune_insee=eq.<code INSEE>` — **uniquement
+   PostgREST) filtrée sur `code_commune_insee=eq.<code INSEE>` : **uniquement
    la commune concernée**, jamais un téléchargement département/national.
    Le quota gratuit (10 000 requêtes/mois) et la pagination imposée par
    l'offre Open (10 lignes par requête) suffisent largement à l'échelle
@@ -184,7 +184,7 @@ classification BD TOPO.
 4. Les champs réglementaires dérivés (`diagnostic_vuln`, `zone_refuge`,
    `refuge_categorie`, `obligations_typologie`, `eligibilite_fprnm`) sont
    alors recalculés pour ces bâtiments avec les **mêmes règles** que celles
-   appliquées aux bâtiments déjà classés par BD TOPO (§3 à §6) — aucune
+   appliquées aux bâtiments déjà classés par BD TOPO (§3 à §6) ; aucune
    règle nouvelle n'est introduite, seule la donnée d'entrée est complétée.
    Les bâtiments hors zonage réglementaire ne sont pas concernés par cette
    étape (leur fiche ne détaille pas la typologie).
@@ -196,7 +196,7 @@ classification BD TOPO.
 **Résultat pour Septèmes-les-Vallons (millésime BDNB 2026-02.a) :** sur les
 3 515 bâtiments initialement indéterminés, 2 147 obtiennent une
 correspondance BDNB exploitable (dont 269 situés en zone réglementée PPRi,
-avec obligations complètes recalculées — 68 d'entre eux déclenchent
+avec obligations complètes recalculées, 68 d'entre eux déclenchent
 l'obligation de zone refuge, jusqu'alors invisible) ; 1 368 restent
 indéterminés (voir §8).
 
