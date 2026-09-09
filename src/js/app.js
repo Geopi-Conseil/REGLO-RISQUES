@@ -300,16 +300,26 @@
     layer.setStyle(highlightStyle());
     if (layer.bringToFront) layer.bringToFront();
 
+    // Centroïde du bâtiment (coordonnées affichées dans les détails
+    // techniques) : calculé une fois ici, réutilisé par renderBuildingPanel
+    // et par ses ré-appels depuis le bloc de correction (même référence
+    // `feature.properties`).
+    let bounds = null;
+    if (layer.getBounds) {
+      bounds = layer.getBounds();
+      const c = bounds.getCenter();
+      feature.properties.__centroid = { lat: c.lat, lng: c.lng };
+    }
+
     renderBuildingPanel(feature.properties);
     setPanelExpanded(true);
 
     // Sur mobile, on centre la carte un peu au-dessus du panneau pour que
     // le bâtiment reste visible pendant que le panneau occupe le bas d'écran.
-    if (window.innerWidth < 860 && layer.getBounds) {
-      const bounds = layer.getBounds();
+    if (bounds && window.innerWidth < 860) {
       map.flyTo(bounds.getCenter(), Math.max(map.getZoom(), 17), { duration: 0.5 });
-    } else if (layer.getBounds) {
-      map.panTo(layer.getBounds().getCenter());
+    } else if (bounds) {
+      map.panTo(bounds.getCenter());
     }
   }
 
@@ -719,9 +729,21 @@
     }
 
     // --- Détails techniques (repliés) ---
+    // Champs bruts utiles pour un usage administratif/technique (élus,
+    // techniciens, bureaux d'études) : codes et identifiants stables,
+    // complémentaires du texte déjà mis en forme dans les sections
+    // ci-dessus (qui restent la référence pour le contenu réglementaire).
     const techRows = [];
-    if (eff.zonesIntersectees) techRows.push(techRow("Zones intersectées", eff.zonesIntersectees));
-    if (eff.id) techRows.push(techRow("Identifiant BD TOPO", eff.id));
+    if (hasValue(eff.zoneCode)) techRows.push(techRow("Code de zone (PPRi)", eff.zoneCode));
+    if (hasValue(eff.zonesIntersectees)) techRows.push(techRow("Zones intersectées", eff.zonesIntersectees));
+    if (hasValue(eff.refugeCategorie)) techRows.push(techRow("Catégorie zone refuge", eff.refugeCategorie));
+    if (hasValue(eff.empriseFiable)) techRows.push(techRow("Fiabilité de l'emprise au sol", eff.empriseFiable));
+    if (eff.__centroid) {
+      techRows.push(
+        techRow("Coordonnées (WGS84)", `${eff.__centroid.lat.toFixed(6)}, ${eff.__centroid.lng.toFixed(6)}`)
+      );
+    }
+    if (hasValue(eff.id)) techRows.push(techRow("Identifiant BD TOPO", eff.id));
 
     if (techRows.length) {
       sections.push(`
