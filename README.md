@@ -118,16 +118,19 @@ qgis-project/                (à ajouter, voir ci-dessous) projet QGIS source
 4. Tester en local (`python3 -m http.server`) avant de publier.
 
 Le détail de la méthode de calcul (règle du bâtiment le plus contraignant,
-seuils de travaux, éligibilité FPRNM, etc.) est documenté dans
+seuils de travaux, éligibilité FPRNM, enrichissement BDNB des bâtiments non
+classés par BD TOPO, etc.) est documenté dans
 [`docs/METHODOLOGIE.md`](docs/METHODOLOGIE.md).
 
 ## Sources et licences des données
 
 Voir le détail complet dans [`mentions-legales.html`](mentions-legales.html).
 En résumé : PPRi (DDTM 13, données publiques), BD TOPO® © IGN (licence
-ouverte Etalab), Acceslibre (data.gouv.fr, licence ouverte Etalab), fond de
-carte © contributeurs OpenStreetMap, recherche d'adresse via l'API Adresse
-(Etalab).
+ouverte Etalab), [BDNB](https://bdnb.io/) (CSTB/ADEME, Fichiers Fonciers,
+Licence Ouverte 2.0 — complète la typologie des bâtiments non classés par
+BD TOPO, voir `docs/METHODOLOGIE.md` §10), Acceslibre (data.gouv.fr, licence
+ouverte Etalab), fond de carte © contributeurs OpenStreetMap, recherche
+d'adresse via l'API Adresse (Etalab).
 
 ## Licence du code
 
@@ -148,6 +151,10 @@ restrictives sur certains points (attribution obligatoire notamment).
 - Ajouter le projet QGIS source et le GeoPackage au dépôt (ou à un stockage
   Git LFS / dépôt de données séparé) pour une traçabilité complète.
 - Page "atlas imprimable" par secteur, pour les réunions publiques.
+- Réduire encore les 1 368 bâtiments de typologie indéterminée restants
+  (voir `docs/METHODOLOGIE.md` §8 et §10) : croisement cadastral
+  complémentaire, ou vérification terrain ciblée sur les bâtiments en zone
+  réglementée.
 
 ## Contribuer
 

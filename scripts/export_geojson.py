@@ -8,7 +8,10 @@ avec un environnement QGIS), depuis le projet source
     zone_refuge, refuge_categorie, obligations_typologie, zones_intersectees,
     etage_present, etage_source, typologie_occupation, eligibilite_fprnm,
     emprise_sol_m2, emprise_fiable, annexe_max_m2, extension_hebergement_m2,
-    extension_activite_m2, extension_activite_note
+    extension_activite_m2, extension_activite_note, typologie_source
+    (typologie_source distingue les bâtiments dont la typologie/étages ont
+    été complétés via la BDNB — cf. docs/METHODOLOGIE.md §10 — des autres,
+    dérivés directement de BD TOPO®)
   - PPRi - Zonage réglementaire -> champs NOM, CODEZONE, TYPEREG
   - ERP (Acceslibre) -> champs nom, activite, classe_vulnerabilite, adresse,
     zone_pprin
@@ -156,6 +159,7 @@ def export_bati():
             "extensionActiviteNote": clean(f["extension_activite_note"]),
             "nbLogements": clean(f["nombre_de_logements"]),
             "hauteurM": clean(f["hauteur"]),
+            "typologieSource": clean(f["typologie_source"]),
         }
         props = {k: v for k, v in props.items() if v is not None}
         feats_zone.append({"type": "Feature", "geometry": geom, "properties": props})

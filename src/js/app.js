@@ -420,9 +420,12 @@
     // --- Détails techniques (repliés) ---
     const techRows = [];
     if (p.zonesIntersectees) techRows.push(techRow("Zones intersectées", p.zonesIntersectees));
-    if (p.typologie) techRows.push(techRow("Typologie", p.typologie));
+    if (p.typologie) {
+      const src = p.typologieSource ? ` (source : ${p.typologieSource})` : " (source : BD TOPO®)";
+      techRows.push(techRow("Typologie", `${p.typologie}${src}`));
+    }
     if (p.etagePresent) techRows.push(techRow("Étage présent", `${p.etagePresent}${p.etageSource ? " — " + p.etageSource : ""}`));
-    if (p.nbLogements) techRows.push(techRow("Nombre de logements (BD TOPO)", p.nbLogements));
+    if (p.nbLogements) techRows.push(techRow("Nombre de logements", p.nbLogements));
     if (p.hauteurM) techRows.push(techRow("Hauteur du bâti (BD TOPO)", `${p.hauteurM} m`));
     if (p.id) techRows.push(techRow("Identifiant BD TOPO", p.id));
 

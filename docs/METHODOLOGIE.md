@@ -100,6 +100,11 @@ Estimation indicative basée sur la typologie d'occupation déduite de
   géographiques) ;
 - **Typologie indéterminée** → non déterminé, à qualifier sur site.
 
+Depuis l'enrichissement BDNB (§10), la typologie provient soit de BD TOPO,
+soit de la BDNB (Fichiers Fonciers) — le champ `typologieSource` de chaque
+bâtiment (visible dans le panneau « Détails techniques ») indique laquelle,
+sans changer les règles d'éligibilité ci-dessus.
+
 Dans tous les cas, l'éligibilité réelle suppose un bien existant avant la
 date d'approbation du PPRi (22/12/2022) et reste soumise à instruction par
 la DDTM.
@@ -119,17 +124,86 @@ de confiance).
 
 ## 8. Limites connues
 
-- 3 515 bâtiments (BD TOPO `usage_1 = Indifférencié`) restent en
-  « typologie indéterminée » : la donnée source ne permet pas de distinguer
-  habitation / activité pour ces bâtiments sans croisement cadastral ou
+- Malgré l'enrichissement BDNB (§10), 1 368 bâtiments restent en
+  « typologie indéterminée » (aucune correspondance BDNB trouvée, ou
+  bâtiment également absent des Fichiers Fonciers — cas fréquent pour de
+  petites annexes ou des constructions très récentes) : la donnée source ne
+  permet pas de distinguer habitation / activité pour ces bâtiments sans
   visite terrain.
 - Le calcul d'éligibilité FPRNM est indicatif ; il ne remplace pas
   l'instruction d'un dossier réel.
 - Les seuils de travaux ne couvrent que les obligations relatives aux
   **biens existants** ; les règles applicables aux **projets neufs** (permis
   de construire) ne sont pas modélisées dans cet outil.
+- La jointure BDNB (§10) est spatiale (bâtiment ↔ `batiment_groupe` BDNB) et
+  non par identifiant commun ; en cas de bâtiments très rapprochés ou d'un
+  `batiment_groupe` regroupant plusieurs bâtiments BD TOPO contigus, la
+  typologie/le nombre de logements attribués sont ceux du groupe BDNB dans
+  son ensemble, pas nécessairement ceux du bâtiment individuel exact.
 
-## 9. Reproduire pour une autre commune
+## 10. Enrichissement par la BDNB (typologie, étages, logements)
+
+BD TOPO® ne renseigne l'usage (`usage_1`) que pour une partie des
+bâtiments ; les autres restent `Indifférencié`, sans typologie ni nombre de
+logements exploitables (cf. §8, historique : 3 515 bâtiments sur 6 305 pour
+Septèmes-les-Vallons). Pour combler ce trou **sans changer de source
+principale**, ces bâtiments sont croisés avec la [Base de Données Nationale
+des Bâtiments (BDNB)](https://bdnb.io/), dont la table `batiment_groupe_ffo_bat`
+(source : Fichiers Fonciers, DGFiP/Cerema) fournit `usage_niveau_1_txt`,
+`nb_niveau` et `nb_log` pour un grand nombre de bâtiments absents de la
+classification BD TOPO.
+
+**Méthode :**
+
+1. Requêter l'[API BDNB Open](https://www.data.gouv.fr/dataservices/api-bdnb-open)
+   (gratuite, sans clé, `https://api.bdnb.io/v1/bdnb/donnees/…`, syntaxe
+   PostgREST) filtrée sur `code_commune_insee=eq.<code INSEE>` — **uniquement
+   la commune concernée**, jamais un téléchargement département/national.
+   Le quota gratuit (10 000 requêtes/mois) et la pagination imposée par
+   l'offre Open (10 lignes par requête) suffisent largement à l'échelle
+   d'une commune : environ 700 requêtes pour Septèmes-les-Vallons
+   (géométries + Fichiers Fonciers), réparties dans le temps pour respecter
+   le débit imposé par l'API (erreurs 429 en cas de rafale).
+2. Pour chaque bâtiment `typologie_occupation = "Typologie indéterminée…"`,
+   jointure spatiale (centroïde, puis repli sur la plus grande intersection)
+   avec les polygones `batiment_groupe` de la BDNB.
+3. Traduction de `usage_niveau_1_txt` en trois grandes catégories, alignées
+   sur celles déjà utilisées côté BD TOPO (§ ci-dessus) :
+
+   | `usage_niveau_1_txt` (BDNB) | Catégorie retenue |
+   |---|---|
+   | Résidentiel individuel, Résidentiel collectif, Secondaire | Habitation |
+   | Tertiaire & Autres | Activité économique |
+   | Dépendance | Annexe (non habitée) |
+
+   Le nombre de logements (`nb_log`) détermine ensuite « Maison
+   individuelle » (0 ou 1) vs « Logement collectif (N logements) », comme
+   pour BD TOPO (§4). Le nombre de niveaux (`nb_niveau`) prend le pas sur
+   l'estimation par hauteur du §3 lorsqu'il est connu (`etage_source`
+   l'indique explicitement : `connu (BDNB Fichiers Fonciers nb_niveau=N)`).
+4. Les champs réglementaires dérivés (`diagnostic_vuln`, `zone_refuge`,
+   `refuge_categorie`, `obligations_typologie`, `eligibilite_fprnm`) sont
+   alors recalculés pour ces bâtiments avec les **mêmes règles** que celles
+   appliquées aux bâtiments déjà classés par BD TOPO (§3 à §6) — aucune
+   règle nouvelle n'est introduite, seule la donnée d'entrée est complétée.
+   Les bâtiments hors zonage réglementaire ne sont pas concernés par cette
+   étape (leur fiche ne détaille pas la typologie).
+5. Traçabilité : le champ `typologie_source` distingue "BD TOPO" (implicite,
+   valeur par défaut) de `"BDNB (Fichiers Fonciers, millésime 2026-02.a)"`,
+   affiché dans le panneau « Détails techniques » de chaque bâtiment
+   concerné.
+
+**Résultat pour Septèmes-les-Vallons (millésime BDNB 2026-02.a) :** sur les
+3 515 bâtiments initialement indéterminés, 2 147 obtiennent une
+correspondance BDNB exploitable (dont 269 situés en zone réglementée PPRi,
+avec obligations complètes recalculées — 68 d'entre eux déclenchent
+l'obligation de zone refuge, jusqu'alors invisible) ; 1 368 restent
+indéterminés (voir §8).
+
+**Licence et attribution :** données BDNB sous Licence Ouverte / Open
+Licence version 2.0 (Etalab), comme BD TOPO®. Voir `mentions-legales.html`.
+
+## 11. Reproduire pour une autre commune
 
 1. Récupérer le zonage réglementaire du PPRi (WFS DDTM ou export shapefile)
    et le règlement (PDF).
@@ -137,6 +211,9 @@ de confiance).
 3. Réaliser la jointure spatiale « zone la plus contraignante » (voir §2).
 4. Adapter les seuils du §5 et les règles du §4/§6 au règlement propre à la
    commune concernée (ils varient d'un PPRi à l'autre).
-5. Adapter `scripts/export_geojson.py` (noms de couches, éventuels nouveaux
+5. Optionnel : reproduire l'enrichissement BDNB du §10 en remplaçant le code
+   INSEE (`code_commune_insee=eq.<code INSEE>`) par celui de la nouvelle
+   commune.
+6. Adapter `scripts/export_geojson.py` (noms de couches, éventuels nouveaux
    champs) et régénérer `data/*.geojson`.
-6. Mettre à jour `CONFIG.center` / `CONFIG.codeInsee` dans `src/js/app.js`.
+7. Mettre à jour `CONFIG.center` / `CONFIG.codeInsee` dans `src/js/app.js`.
