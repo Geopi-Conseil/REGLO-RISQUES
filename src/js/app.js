@@ -102,20 +102,27 @@
     };
   }
 
-  function styleBatiment(feature) {
+  // Tous les bâtiments (en zone réglementée ou non) sont affichés dans une
+  // même couleur neutre (gris foncé) : la couleur de zone reste portée par
+  // le fond réglementaire (styleZonage) et la légende, ce qui évite une
+  // carte où chaque bâtiment redouble déjà la couleur du fond sous lui.
+  const BUILDING_FILL = "#4a4f57";
+  const BUILDING_STROKE = "#2c3036";
+
+  function styleBatiment() {
     return {
-      color: "#3a3f45",
+      color: BUILDING_STROKE,
       weight: 1,
-      fillColor: feature.properties.zoneColor || "#9E9E9E",
+      fillColor: BUILDING_FILL,
       fillOpacity: 0.75,
     };
   }
 
   function styleHorsZone() {
     return {
-      color: "#8a929c",
+      color: BUILDING_STROKE,
       weight: 0.5,
-      fillColor: "#c9ced4",
+      fillColor: BUILDING_FILL,
       fillOpacity: 0.35,
     };
   }
