@@ -772,6 +772,85 @@ details.tech-details dd {
   margin: 2px 0 0;
 }
 
+/* ---------------------- Correction déclarative du visiteur --------------- */
+
+.correction-active-note {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+details.correction-block {
+  margin: 10px 0 14px;
+  background: var(--color-surface-alt);
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+details.correction-block summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.correction-body {
+  margin-top: 10px;
+}
+
+.correction-body fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.correction-body legend {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0 0 6px;
+}
+
+.correction-body .radio-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.correction-body select,
+.correction-body input[type="number"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.correction-body label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.correction-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.correction-note {
+  font-size: 0.76rem;
+  margin: 10px 0 0;
+}
+
 .panel-close {
   position: absolute;
   top: 10px;

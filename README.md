@@ -58,6 +58,13 @@ méthode de calcul et les limites.
   zone réglementaire...). Chaque donnée est cliquable et surligne sur la
   carte les bâtiments/ERP correspondants, calculée côté client à partir des
   mêmes GeoJSON (aucune source ni traitement serveur supplémentaire).
+- **Correction déclarative par le visiteur.** Sur chaque fiche bâtiment en
+  zone réglementée, un bloc dépliable permet de préciser la présence d'un
+  étage et le type d'occupation (voir `docs/METHODOLOGIE.md` §9) : l'outil
+  recalcule alors la zone refuge et les obligations avec les mêmes règles
+  que pour un bâtiment classé automatiquement. Correction 100% côté client,
+  gardée uniquement dans le navigateur du visiteur (`localStorage`), jamais
+  envoyée ni partagée.
 
 ## Démarrage rapide
 

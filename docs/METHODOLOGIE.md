@@ -198,6 +198,40 @@ de confiance).
   mesure directe : une vérification terrain reste recommandée pour toute
   décision engageant des travaux structurels (§4).
 
+## 9. Correction déclarative du visiteur
+
+Pour les bâtiments concernés par le zonage réglementaire, la fiche propose
+un bloc dépliable « Précisez votre bâtiment » : le visiteur qui connaît le
+bâtiment mieux que les données publiques (§8) peut y indiquer la présence
+d'un étage, et le type d'occupation (maison individuelle, logement
+collectif avec son nombre de logements, local d'activité économique, ou
+annexe non habitée).
+
+**Fonctionnement :**
+
+- Le calcul est entièrement effectué **côté client** (JavaScript,
+  `src/js/app.js`), avec les **mêmes règles et les mêmes textes** que ceux
+  déjà appliqués côté données pour un bâtiment nativement classé dans la
+  même catégorie (zone refuge : §4 ; diagnostic, obligations, éligibilité
+  FPRNM : §6 et les libellés déjà utilisés en §10) : une correction
+  affiche donc exactement le même résultat qu'un bâtiment automatiquement
+  classé de la même façon.
+- La correction est **enregistrée uniquement dans le navigateur du
+  visiteur** (`localStorage`, clé `reglo-risques:corrections-batiments:v1`,
+  indexée par l'identifiant BD TOPO du bâtiment) : elle n'est **jamais
+  envoyée à un serveur, ni partagée avec les autres visiteurs**, et ne
+  modifie jamais les fichiers `data/*.geojson` sources. Elle est retrouvée
+  automatiquement si le même visiteur revient sur la même fiche depuis le
+  même appareil, et peut être réinitialisée à tout moment.
+- Elle ne porte que sur l'étage et la typologie/logements : les champs
+  déterminés par la géométrie ou la zone (emprise au sol, seuils de
+  travaux, régime, zones intersectées) ne sont pas modifiables par le
+  visiteur.
+- Comme le reste de l'outil, cette correction n'a **aucune valeur
+  réglementaire opposable** (rappelé dans le panneau) : elle aide à mieux
+  comprendre le cadre applicable, elle ne remplace pas une vérification
+  officielle (service urbanisme, DDTM).
+
 ## 10. Enrichissement par la BDNB (typologie, étages, logements)
 
 BD TOPO® ne renseigne l'usage (`usage_1`) que pour une partie des

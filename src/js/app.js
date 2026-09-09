@@ -8,6 +8,7 @@
    2. Initialisation de la carte et des couches
    3. Chargement des données (GeoJSON)
    4. Sélection d'un bâtiment / rendu du panneau d'information
+   4bis. Correction déclarative du bâtiment (par le visiteur)
    5. Recherche d'adresse (API Adresse - BAN) et géolocalisation
    6. Légende et bascule des couches
    7. Tableau de bord communal (élus, techniciens)
@@ -324,6 +325,251 @@
     return `<span class="badge" style="background:${color}">${escapeHtml(text)}</span>`;
   }
 
+  /* ----------------------------------------------------------------------
+   * 4bis. Correction déclarative du bâtiment (par le visiteur)
+   * ----------------------------------------------------------------------
+   * Les données publiques (BD TOPO, BDNB) se trompent parfois à l'échelle
+   * d'un bâtiment précis (voir docs/METHODOLOGIE.md §3, §8). Un visiteur
+   * qui connaît le bâtiment peut préciser deux points ici : la présence
+   * d'un étage, et le type d'occupation (avec le nombre de logements).
+   * L'outil recalcule alors la zone refuge, le diagnostic de vulnérabilité,
+   * les obligations liées à la typologie et l'éligibilité FPRNM avec les
+   * mêmes règles et les mêmes textes que ceux appliqués côté données
+   * (docs/METHODOLOGIE.md §4 et §6) - seule la source change.
+   *
+   * La correction reste strictement locale (stockage du navigateur,
+   * localStorage) : jamais envoyée, jamais partagée avec les autres
+   * visiteurs, et sans valeur réglementaire (rappelé dans le panneau).
+   * -------------------------------------------------------------------- */
+
+  const OVERRIDES_KEY = "reglo-risques:corrections-batiments:v1";
+
+  function loadOverrides() {
+    try {
+      return JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function getOverride(id) {
+    if (!id) return null;
+    return loadOverrides()[id] || null;
+  }
+
+  function saveOverride(id, data) {
+    if (!id) return;
+    try {
+      const all = loadOverrides();
+      all[id] = { ...data, updatedAt: new Date().toISOString() };
+      localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
+    } catch (e) {
+      // Stockage indisponible (navigation privée, quota...) : la correction
+      // s'applique quand même pour l'affichage courant, sans persister.
+    }
+  }
+
+  function clearOverride(id) {
+    if (!id) return;
+    try {
+      const all = loadOverrides();
+      delete all[id];
+      localStorage.setItem(OVERRIDES_KEY, JSON.stringify(all));
+    } catch (e) {
+      /* voir saveOverride */
+    }
+  }
+
+  // Textes repris tels quels de docs/METHODOLOGIE.md (§4, §6), identiques à
+  // ceux déjà utilisés côté données pour les bâtiments classés BD TOPO/BDNB,
+  // afin qu'une correction du visiteur affiche exactement le même libellé
+  // qu'un bâtiment nativement classé dans la même catégorie.
+  const CORRECTION_TEXTS = {
+    obligationsHabitation:
+      "Habitation : extension/changement de destination admis sous reserve " +
+      "(plancher a PHE+20cm, mesures de mitigation) ; reconstruction apres " +
+      "destruction par une crue INTERDITE.",
+    obligationsActivite:
+      "Local d'activite : si ERP 1a3 categorie / etablissement sensible ou " +
+      "strategique, creation et reconstruction INTERDITES (sauf derogation " +
+      "tres encadree). Sinon extension/changement de destination admis a 20% " +
+      "sous conditions (PHE+20cm, diagnostic, mitigation).",
+    diagnosticHabitation: "Auto-diagnostic de vulnerabilite (facultatif, a la charge du proprietaire).",
+    diagnosticActivite:
+      "OBLIGATOIRE si ERP 1a3 categorie, etablissement strategique/sensible, " +
+      "ou activite de plus de 20 salaries (a verifier sur site, non " +
+      "deductible de la BD TOPO) ; sinon auto-diagnostic recommande.",
+    diagnosticAnnexe: "Non concerne (annexe).",
+    eligibiliteHabitation:
+      "Éligible - habitation : Fonds Barnier (FPRNM) à 80% des travaux de " +
+      "prévention prescrits par le PPRi, plafond 36 000 €/bien, sous réserve " +
+      "d'un bien existant avant l'approbation du PPRi (22/12/2022).",
+    eligibiliteActivite:
+      "Potentiellement éligible - activité : Fonds Barnier (FPRNM) à 20% des " +
+      "travaux prescrits par le PPRi si moins de 20 salariés (à vérifier), " +
+      "sous réserve d'un bien existant avant l'approbation du PPRi.",
+    eligibiliteIndeterminee: "Non déterminé - typologie non éligible en l'état ou à qualifier sur site.",
+  };
+
+  // Applique une correction déclarative (si elle existe) aux propriétés du
+  // bâtiment et recalcule les champs dérivés concernés. Ne modifie jamais
+  // l'objet `p` d'origine (issu du GeoJSON) : retourne une copie, ou `p`
+  // lui-même si aucune correction n'est active.
+  function applyOverride(p, override) {
+    if (!override || (!override.etagePresent && !override.typologieCategorie)) return p;
+
+    const eff = { ...p, overridden: true };
+
+    if (override.etagePresent === "Oui" || override.etagePresent === "Non") {
+      eff.etagePresent = override.etagePresent;
+      eff.etageSource = "déclaré par vous";
+    }
+
+    let nbLogements = null;
+    const T = CORRECTION_TEXTS;
+    if (override.typologieCategorie === "individuelle") {
+      eff.typologie = "Maison individuelle";
+      eff.typologieSource = "déclaré par vous";
+      eff.obligationsTypologie = T.obligationsHabitation;
+      eff.diagnostic = T.diagnosticHabitation;
+      eff.eligibiliteFprnm = T.eligibiliteHabitation;
+      nbLogements = 1;
+    } else if (override.typologieCategorie === "collectif") {
+      nbLogements = Math.max(2, parseInt(override.nbLogements, 10) || 2);
+      eff.typologie = `Logement collectif (${nbLogements} logements)`;
+      eff.typologieSource = "déclaré par vous";
+      eff.obligationsTypologie = T.obligationsHabitation;
+      eff.diagnostic = T.diagnosticHabitation;
+      eff.eligibiliteFprnm = T.eligibiliteHabitation;
+    } else if (override.typologieCategorie === "activite") {
+      eff.typologie = "Entreprise / activité économique";
+      eff.typologieSource = "déclaré par vous";
+      eff.obligationsTypologie = T.obligationsActivite;
+      eff.diagnostic = T.diagnosticActivite;
+      eff.eligibiliteFprnm = T.eligibiliteActivite;
+      nbLogements = 0;
+    } else if (override.typologieCategorie === "annexe") {
+      eff.typologie = "Annexe (non habitée)";
+      eff.typologieSource = "déclaré par vous";
+      eff.obligationsTypologie = p.annexeMaxM2
+        ? `Annexe : creation limitee a ${p.annexeMaxM2} m2 d'emprise au sol au terrain naturel (une fois depuis l'approbation du PPRi).`
+        : "Annexe : creation limitee en emprise au sol, voir reglement du PPRi.";
+      eff.diagnostic = T.diagnosticAnnexe;
+      eff.eligibiliteFprnm = T.eligibiliteIndeterminee;
+      nbLogements = 0;
+    }
+    if (nbLogements !== null) eff.nbLogements = String(nbLogements);
+
+    // Recalcul de la zone refuge (mêmes règles que docs/METHODOLOGIE.md §4 :
+    // hébergement collectif de plus de 2 logements, quelle que soit la zone).
+    const n = eff.nbLogements != null ? parseInt(eff.nbLogements, 10) : null;
+    if (n && n > 2) {
+      if (eff.etagePresent === "Oui") {
+        eff.zoneRefuge = `OBLIGATOIRE (hébergement collectif, ${n} logements). Aménagement possible sur un niveau existant.`;
+        eff.refugeCategorie = "Obligatoire - avec etage existant";
+      } else if (eff.etagePresent === "Non") {
+        eff.zoneRefuge =
+          `OBLIGATOIRE (hébergement collectif, ${n} logements). ATTENTION : pas d'étage existant ` +
+          `(rez-de-chaussée seul), travaux structurels nécessaires (création/surélévation) pour ` +
+          `disposer d'une zone refuge.`;
+        eff.refugeCategorie = "Obligatoire - sans etage existant";
+      } else {
+        eff.zoneRefuge =
+          `Obligation de zone refuge probable (hébergement collectif, ${n} logements), mais présence ` +
+          `d'un étage inconnue : précisez-la ci-dessus pour connaître les travaux éventuellement nécessaires.`;
+        eff.refugeCategorie = "Obligatoire - à préciser";
+      }
+    } else {
+      eff.zoneRefuge = "Non requise (bâtiment non concerné par l'obligation hébergement collectif >2 logements)";
+      eff.refugeCategorie = "Non requise";
+    }
+
+    return eff;
+  }
+
+  function renderCorrectionBlock(p, override) {
+    const etage = override && override.etagePresent;
+    const typo = override && override.typologieCategorie;
+    const nbLog = (override && override.nbLogements) || 3;
+    const radio = (value, label) => `
+      <label class="radio-row">
+        <input type="radio" name="correction-etage" value="${value}" ${etage === value ? "checked" : ""}>
+        ${escapeHtml(label)}
+      </label>`;
+    return `
+      <details class="correction-block" ${override ? "open" : ""}>
+        <summary>✏️ Ce n'est pas votre cas ? Précisez votre bâtiment</summary>
+        <div class="correction-body">
+          <p class="text-muted">
+            Les données publiques (IGN BD TOPO, BDNB) peuvent se tromper à
+            l'échelle d'un bâtiment précis. Si vous le connaissez, indiquez-le
+            ici : l'outil recalcule aussitôt la zone refuge et les obligations
+            ci-dessous à partir de votre réponse.
+          </p>
+          <form id="correction-form">
+            <fieldset>
+              <legend>Ce bâtiment a-t-il un étage ?</legend>
+              ${radio("Oui", "Oui")}
+              ${radio("Non", "Non, rez-de-chaussée seul")}
+              ${radio("", "Je ne sais pas (estimation automatique)")}
+            </fieldset>
+            <fieldset>
+              <legend>Quel type de bâtiment ?</legend>
+              <select id="correction-typologie" name="correction-typologie">
+                <option value="">Je ne sais pas (typologie automatique)</option>
+                <option value="individuelle" ${typo === "individuelle" ? "selected" : ""}>Maison individuelle</option>
+                <option value="collectif" ${typo === "collectif" ? "selected" : ""}>Logement collectif (plusieurs logements)</option>
+                <option value="activite" ${typo === "activite" ? "selected" : ""}>Local d'activité économique</option>
+                <option value="annexe" ${typo === "annexe" ? "selected" : ""}>Annexe non habitée (garage, abri, remise...)</option>
+              </select>
+            </fieldset>
+            <fieldset id="correction-logements-field" ${typo === "collectif" ? "" : "hidden"}>
+              <label>Nombre de logements
+                <input type="number" id="correction-nb-logements" min="2" max="999" value="${escapeHtml(String(nbLog))}">
+              </label>
+            </fieldset>
+            <div class="correction-actions">
+              <button type="submit" class="btn primary">Appliquer ma correction</button>
+              ${override ? `<button type="button" id="correction-reset" class="btn">Réinitialiser</button>` : ""}
+            </div>
+            <p class="text-muted correction-note">
+              Enregistré uniquement sur cet appareil, jamais envoyé ni
+              partagé. Ne remplace pas une vérification officielle.
+            </p>
+          </form>
+        </div>
+      </details>
+    `;
+  }
+
+  function wireCorrectionBlock(p) {
+    const form = panelBody.querySelector("#correction-form");
+    if (!form) return;
+    const typologieSelect = form.querySelector("#correction-typologie");
+    const logementsField = form.querySelector("#correction-logements-field");
+    typologieSelect.addEventListener("change", () => {
+      logementsField.hidden = typologieSelect.value !== "collectif";
+    });
+    form.addEventListener("submit", (evt) => {
+      evt.preventDefault();
+      const checked = form.querySelector('input[name="correction-etage"]:checked');
+      const nbLogementsInput = form.querySelector("#correction-nb-logements");
+      saveOverride(p.id, {
+        etagePresent: (checked && checked.value) || null,
+        typologieCategorie: typologieSelect.value || null,
+        nbLogements: typologieSelect.value === "collectif" ? nbLogementsInput.value : null,
+      });
+      renderBuildingPanel(p);
+    });
+    const resetBtn = form.querySelector("#correction-reset");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        clearOverride(p.id);
+        renderBuildingPanel(p);
+      });
+    }
+  }
+
   function renderBuildingPanel(p) {
     panelCloseBtn.hidden = false;
 
@@ -349,35 +595,42 @@
       return;
     }
 
-    panelZoneDot.style.background = p.zoneColor;
-    panelTitle.textContent = CONFIG.zoneShortNames[p.zoneCode]
-      ? `Zone ${CONFIG.zoneShortNames[p.zoneCode]}`
+    const override = getOverride(p.id);
+    const eff = applyOverride(p, override);
+
+    panelZoneDot.style.background = eff.zoneColor;
+    panelTitle.textContent = CONFIG.zoneShortNames[eff.zoneCode]
+      ? `Zone ${CONFIG.zoneShortNames[eff.zoneCode]}`
       : "Zone réglementée";
-    panelSubtitle.textContent = p.zoneLabel || "";
+    panelSubtitle.textContent = eff.zoneLabel || "";
 
     const sections = [];
 
     // --- Résumé / régime ---
     sections.push(`
       <div class="intro-block">
-        ${badge(CONFIG.zoneShortNames[p.zoneCode] || p.zoneCode, p.zoneColor)}
-        <p>${escapeHtml(p.regime || "Consultez le règlement du PPRi pour le régime applicable à ce bâtiment.")}</p>
+        ${badge(CONFIG.zoneShortNames[eff.zoneCode] || eff.zoneCode, eff.zoneColor)}
+        <p>${escapeHtml(eff.regime || "Consultez le règlement du PPRi pour le régime applicable à ce bâtiment.")}</p>
+        ${eff.overridden ? `<p class="correction-active-note">✏️ Affichage basé sur votre déclaration ci-dessous.</p>` : ""}
       </div>
     `);
 
+    // --- Correction déclarative du visiteur ---
+    sections.push(renderCorrectionBlock(p, override));
+
     // --- Diagnostic de vulnérabilité ---
-    if (p.diagnostic) {
-      sections.push(section("🔎", "Diagnostic de vulnérabilité", `<p>${escapeHtml(p.diagnostic)}</p>`));
+    if (eff.diagnostic) {
+      sections.push(section("🔎", "Diagnostic de vulnérabilité", `<p>${escapeHtml(eff.diagnostic)}</p>`));
     }
 
     // --- Zone refuge ---
-    if (p.zoneRefuge || p.refugeCategorie) {
-      const isObligatoire = (p.refugeCategorie || "").startsWith("Obligatoire");
+    if (eff.zoneRefuge || eff.refugeCategorie) {
+      const isObligatoire = (eff.refugeCategorie || "").startsWith("Obligatoire");
       sections.push(
         section(
           "🛟",
           "Zone refuge",
-          `<p>${escapeHtml(p.zoneRefuge || p.refugeCategorie)}</p>` +
+          `<p>${escapeHtml(eff.zoneRefuge || eff.refugeCategorie)}</p>` +
             (isObligatoire
               ? `<p class="text-muted">Une zone refuge est un niveau du bâtiment situé au-dessus des plus hautes eaux connues, permettant d'attendre les secours en cas de crue.</p>`
               : "")
@@ -386,24 +639,24 @@
     }
 
     // --- Travaux sur l'existant / emprise au sol ---
-    if (p.empriseFiable === "Oui" && (p.annexeMaxM2 || p.extensionHebergementM2 || p.extensionActiviteM2)) {
+    if (eff.empriseFiable === "Oui" && (eff.annexeMaxM2 || eff.extensionHebergementM2 || eff.extensionActiviteM2)) {
       const chips = [];
-      if (p.empriseSolM2) {
-        chips.push(`<div class="figure-chip"><strong>${p.empriseSolM2} m²</strong>emprise au sol actuelle</div>`);
+      if (eff.empriseSolM2) {
+        chips.push(`<div class="figure-chip"><strong>${eff.empriseSolM2} m²</strong>emprise au sol actuelle</div>`);
       }
-      if (p.annexeMaxM2) {
-        chips.push(`<div class="figure-chip"><strong>${p.annexeMaxM2} m²</strong>annexe autorisée (création)</div>`);
+      if (eff.annexeMaxM2) {
+        chips.push(`<div class="figure-chip"><strong>${eff.annexeMaxM2} m²</strong>annexe autorisée (création)</div>`);
       }
-      if (p.extensionHebergementM2) {
+      if (eff.extensionHebergementM2) {
         chips.push(
-          `<div class="figure-chip"><strong>${p.extensionHebergementM2} m²</strong>extension hébergement</div>`
+          `<div class="figure-chip"><strong>${eff.extensionHebergementM2} m²</strong>extension hébergement</div>`
         );
       }
-      if (p.extensionActiviteM2) {
+      if (eff.extensionActiviteM2) {
         chips.push(
-          `<div class="figure-chip"><strong>${p.extensionActiviteM2} m²</strong>extension activité (approx.)</div>`
+          `<div class="figure-chip"><strong>${eff.extensionActiviteM2} m²</strong>extension activité (approx.)</div>`
         );
-      } else if (p.extensionActiviteNote) {
+      } else if (eff.extensionActiviteNote) {
         chips.push(`<div class="figure-chip">Extension activité : voir note</div>`);
       }
       sections.push(
@@ -411,11 +664,11 @@
           "📐",
           "Travaux sur l'existant",
           `<div class="figure-row">${chips.join("")}</div>` +
-            (p.extensionActiviteNote ? `<p class="text-muted">${escapeHtml(p.extensionActiviteNote)}</p>` : "") +
+            (eff.extensionActiviteNote ? `<p class="text-muted">${escapeHtml(eff.extensionActiviteNote)}</p>` : "") +
             `<p class="text-muted">Seuils calculés à partir de la géométrie du bâtiment (emprise au sol réelle) ; à confirmer par un professionnel avant tout dépôt de dossier.</p>`
         )
       );
-    } else if (p.empriseFiable && p.empriseFiable.startsWith("Non")) {
+    } else if (eff.empriseFiable && eff.empriseFiable.startsWith("Non")) {
       sections.push(
         section(
           "📐",
@@ -426,26 +679,26 @@
     }
 
     // --- Aides financières ---
-    if (p.eligibiliteFprnm) {
-      sections.push(section("💶", "Aides financières (Fonds Barnier)", `<p>${escapeHtml(p.eligibiliteFprnm)}</p>`));
+    if (eff.eligibiliteFprnm) {
+      sections.push(section("💶", "Aides financières (Fonds Barnier)", `<p>${escapeHtml(eff.eligibiliteFprnm)}</p>`));
     }
 
     // --- Obligations liées à la typologie ---
-    if (p.obligationsTypologie) {
-      sections.push(section("📋", "Obligations liées à ce type de bâtiment", `<p>${escapeHtml(p.obligationsTypologie)}</p>`));
+    if (eff.obligationsTypologie) {
+      sections.push(section("📋", "Obligations liées à ce type de bâtiment", `<p>${escapeHtml(eff.obligationsTypologie)}</p>`));
     }
 
     // --- Détails techniques (repliés) ---
     const techRows = [];
-    if (p.zonesIntersectees) techRows.push(techRow("Zones intersectées", p.zonesIntersectees));
-    if (p.typologie) {
-      const src = p.typologieSource ? ` (source : ${p.typologieSource})` : " (source : BD TOPO®)";
-      techRows.push(techRow("Typologie", `${p.typologie}${src}`));
+    if (eff.zonesIntersectees) techRows.push(techRow("Zones intersectées", eff.zonesIntersectees));
+    if (eff.typologie) {
+      const src = eff.typologieSource ? ` (source : ${eff.typologieSource})` : " (source : BD TOPO®)";
+      techRows.push(techRow("Typologie", `${eff.typologie}${src}`));
     }
-    if (p.etagePresent) techRows.push(techRow("Étage présent", `${p.etagePresent}${p.etageSource ? " - " + p.etageSource : ""}`));
-    if (p.nbLogements) techRows.push(techRow("Nombre de logements", p.nbLogements));
-    if (p.hauteurM) techRows.push(techRow("Hauteur du bâti (BD TOPO)", `${p.hauteurM} m`));
-    if (p.id) techRows.push(techRow("Identifiant BD TOPO", p.id));
+    if (eff.etagePresent) techRows.push(techRow("Étage présent", `${eff.etagePresent}${eff.etageSource ? " - " + eff.etageSource : ""}`));
+    if (eff.nbLogements) techRows.push(techRow("Nombre de logements", eff.nbLogements));
+    if (eff.hauteurM) techRows.push(techRow("Hauteur du bâti (BD TOPO)", `${eff.hauteurM} m`));
+    if (eff.id) techRows.push(techRow("Identifiant BD TOPO", eff.id));
 
     if (techRows.length) {
       sections.push(`
@@ -459,7 +712,8 @@
     sections.push(`
       <p class="text-muted" style="margin-top:18px;font-size:0.8rem">
         Ces informations sont calculées automatiquement à partir du règlement du
-        PPRi et de données géographiques (IGN BD TOPO). Elles n'ont pas de valeur
+        PPRi et de données géographiques (IGN BD TOPO), le cas échéant complétées
+        par votre déclaration ci-dessus. Elles n'ont pas de valeur
         réglementaire opposable : en cas de doute, contactez le service urbanisme
         de la mairie ou la DDTM des Bouches-du-Rhône. Voir la page
         <a href="mentions-legales.html">mentions légales</a>.
@@ -467,6 +721,7 @@
     `);
 
     panelBody.innerHTML = sections.join("");
+    wireCorrectionBlock(p);
   }
 
   function section(icon, title, html) {
